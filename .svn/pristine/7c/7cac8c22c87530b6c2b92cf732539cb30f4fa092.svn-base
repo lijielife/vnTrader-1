@@ -1,7 +1,0 @@
-[
-    {
-        "name": "Hedge",
-        "className": "HedgeStrategy",
-        "vtSymbols": ["au1712", "GC1708.CME", "USD_CNH.OANDA"]
-    }
-]
