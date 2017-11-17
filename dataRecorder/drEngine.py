@@ -21,6 +21,7 @@ from vtFunction import todayDate
 from language import text
 
 
+
 ########################################################################
 class DrEngine(object):
     """数据记录引擎"""
@@ -219,7 +220,6 @@ class DrEngine(object):
     #----------------------------------------------------------------------
     def insertData(self, dbName, collectionName, data):
         """插入数据到数据库（这里的data可以是CtaTickData或者CtaBarData）"""
-        print "insert tick"
         self.queue.put((dbName, collectionName, data.__dict__))
         
     #----------------------------------------------------------------------
@@ -254,3 +254,4 @@ class DrEngine(object):
         event.dict_['data'] = log
         self.eventEngine.put(event)   
     
+

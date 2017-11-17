@@ -1,5 +1,5 @@
 {
-    "working": false,
+    "working": true,
 
     "tick":
     [
@@ -8,4 +8,5 @@
         ["USD_CNH","OANDA","OANDA"],
         ["USD.CNH", "IB", "IDEALPRO", "CNH", "外汇"]
     ]
+    
 }

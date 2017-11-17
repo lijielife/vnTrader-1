@@ -13,74 +13,6 @@ import threading
 import time
 
 
-# class Task(object):
-#     def __init__(self, target_time):
-#         # 任务线程
-#         self._thread = Thread(target=self.__run__)
-#         # 任务执行的时间
-#         self.target_time = target_time
-#         # 线程 Event
-#         self.block_event = threading.Event()
-#         self.active = False
-
-#     def __del__(self):
-#         self.stop()
-
-#     def start(self):
-#         """开始执行Task"""
-#         self._thread.start()
-#         self.active = True
-
-#     def stop(self):
-#         """停止执行Task"""
-#         # Event 设为 set, 解除线程阻塞
-#         self.active = False
-#         self.block_event.set()
-
-#     def __run__(self):
-#         # 任务执行
-#         now_time = datetime.now()
-#         delta = (self.target_time - now_time).seconds
-#         print delta
-#         # 阻塞线程，timeout秒后自动释放一次， block_event.Set()后永久释放
-#         while self.active:
-#             self.block_event.wait(timeout=delta)
-#             # 执行 taskJob
-#             self.taskJob()
-#             #执行过一次之后将delta重设
-#             self.target_time = self.target_time + timedelta(days=1)
-#             delta = (self.target_time - datetime.now()).seconds
-        
-#     def taskJob(self):
-#         """任务的具体执行"""
-#         raise NotImplementedError
-# #-------------------------------------------------------------------
-# class CloseCtpTask(Task):
-#     mainEngine = None
-#     def __init__(self, time, mainEngine):
-#         super(CloseCtpTask, self).__init__(time)
-#         self.mainEngine = mainEngine
-#     def taskJob(self):
-#         print 'close ctp'
-#         self.mainEngine.disconnect('CTP')
-#         print "CTP closed."
-
-# class ConnectCtpTask(Task):
-#     mainEngine = None
-#     def __init__(self, time, mainEngine):
-#         super(ConnectCtpTask, self).__init__(time)
-#         self.mainEngine = mainEngine
-#     def taskJob(self):
-#         print 'connect ctp'
-#         try:
-#             self.mainEngine.connect('CTP')
-#         except Exception as e:
-#             print e
-#         else:
-#             print 'Reconnect CTP, Done!'
-
-
-
 
 #-------------------------------------------------------------------
 class AppServer(RpcServer):
@@ -120,21 +52,6 @@ class App(object):
         self.connectGateway('SHZD')
         self.connectGateway('CTP')
         self.connectGateway('OANDA')
-        #self.connectGateway('IB')
-
-        # time.sleep(5)
-        # self.mainEngine.disconnect('CTP')
-        # self.connectGateway('CTP')
-
-
-        # #定时任务启动
-        # #当日20：30
-        # target_time = datetime.today().replace(hour=15,minute=00,second=0,microsecond=0)
-        # self._closeCtpTask = CloseCtpTask(target_time, self.mainEngine)
-        # #一分钟后重连CTP
-        # self._connectCtpTask = ConnectCtpTask(target_time + timedelta(minutes=1), self.mainEngine)
-        # self._closeCtpTask.start()
-        # self._connectCtpTask.start()
 
 
     def quit(self):
