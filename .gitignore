@@ -1,1 +1,5 @@
-!.py
+*.pyc
+*.vt
+*.json
+*.csv
+*.log
