@@ -52,15 +52,15 @@ class State1(State):
         try:
             wfr_1min = self.strategy.WF_result_1min[-1]['wf_result']
         except:
-            wfr_1min = -1;
+            wfr_1min = -1
         try:
             wfr_5min = self.strategy.WF_result_5min[-1]['wf_result']
         except:
-            wfr_5min = -1;
+            wfr_5min = -1
         try:
             wfr_60min = self.strategy.WF_result_60min[-1]['wf_result']
         except:
-            wfr_60min = -1;
+            wfr_60min = -1
         
         print "S1  1M: %.2f  5M: %.2f  60M: %.2f" %(wfr_1min, wfr_5min, wfr_60min)
         
