@@ -1,0 +1,7 @@
+[
+    {
+        "name": "SA_hcrb",
+        "className": "SA_hcrbStrategy",
+        "vtSymbols": ["hc1801", "rb1801"]
+    }
+]

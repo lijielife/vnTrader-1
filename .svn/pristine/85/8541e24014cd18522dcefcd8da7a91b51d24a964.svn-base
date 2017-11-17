@@ -1,0 +1,146 @@
+# encoding: UTF-8
+
+'''
+本文件中实现了下单以及成交数据记录引擎，用于记录汇总下单以及成交数据。
+
+使用PM_setting.json来配置需要跟踪的合约
+'''
+
+import json
+import os
+import copy
+from collections import OrderedDict
+from datetime import datetime, timedelta
+from Queue import Queue
+from threading import Thread
+
+from eventEngine import *
+from vtGateway import VtLogData
+from pmBase import *
+from vtFunction import todayDate
+
+#######################################################################################
+class PmEngine(object):
+    """本地仓位管理引擎"""
+
+    settingFileName = 'PM_setting.json'
+    path = os.path.abspath(os.path.dirname(__file__))
+    settingFileName = os.path.join(path, settingFileName)
+
+    #-------------------------------------------------------
+    def __init__(self, mainEngine, eventEngine):
+        self.mainEngine = mainEngine
+        self.eventEngine = eventEngine
+
+        # 当前日期
+        self.today = todayDate()
+
+        # Order 对象字典
+        self.orderDict = {}
+
+        # Trade 对象字典
+        self.tradeDict = {}
+
+        # 复制执行数据库插入的单独线程相关
+        self.active = False                     #工作状态
+        self.queue = Queue()                    #队列
+        self.thread = Thread(target=self.run)   #线程
+
+        # 载入设置
+        self.loadSetting()
+
+    #-------------------------------------------------------
+    def loadSetting(self):
+        """载入设置"""
+        with open(self.settingFileName) as f:
+            pmSetting = json.load(f)
+
+            # 如果working设置为False则不启动持仓管理功能
+            working = pmSetting['working']
+            if not working:
+                return
+            
+            if 'order' in pmSetting:
+                l = pmSetting['order']
+
+                for symbol in l:
+                    vtSymbol = symbol
+                    pmOrder = PmOrderData()
+                    self.orderDict[vtSymbol] = pmOrder
+
+            if 'trade' in pmSetting:
+                l = pmSetting['trade']
+
+                for symbol in l:
+                    vtSymbol = symbol
+                    pmTrade = PmTradeData()
+                    self.tradeDict[vtSymbol] = pmTrade
+            
+            # 启动数据插入线程
+            self.start()
+            self.mainEngine.writeLog(u'委托/成交记录入库功能已开启') 
+            # 注册事件监听
+            self.registerEvent()
+
+    #------------------------------------------------------
+    def processOrderEvent(self, event):
+        """处理委托推送"""
+        order = event.dict_['data']
+        vtSymbol = order.vtSymbol
+        order.localtime = datetime.now().strftime('%Y-%m-%d %H:%M%S.%f')
+        # 更新Order数据
+        if vtSymbol in self.orderDict:
+            self.insertData(ORDER_DB_NAME, vtSymbol, order)
+            # 发出日志
+            #self.writePmLog(u'%s记录委托推送：%s, %s, %s' % (order.localtime, order.vtSymbol, order.vtOrderID, order.status))
+    #------------------------------------------------------
+    def processTradeEvent(self, event):
+        """处理成交推送"""
+        trade = event.dict_['data']
+        vtSymbol = trade.vtSymbol
+        trade.localtime = datetime.now().strftime('%Y-%m-%d %H:%M%S.%f')
+        # 更新Trade数据
+        if vtSymbol in self.tradeDict:
+            self.insertData(TRADE_DB_NAME, vtSymbol, trade)
+            # 发出日志
+            #self.writePmLog(u'%s记录成交推送：%s, %s, %s, %d手' % (trade.localtime, trade.vtSymbol, trade.direction, trade.offset, trade.volume))
+    #------------------------------------------------------
+    def registerEvent(self):
+        """注册事件监听"""
+        self.eventEngine.register(EVENT_ORDER, self.processOrderEvent)
+        self.eventEngine.register(EVENT_TRADE, self.processTradeEvent)
+        
+    #------------------------------------------------------
+    def insertData(self, dbName, collectionName, data):
+        """插入数据到数据库，可以是order/trade"""
+        self.queue.put((dbName, collectionName, data.__dict__))
+
+    #------------------------------------------------------
+    def run(self):
+        """运行插入线程"""
+        while self.active:
+            try:
+                dbName, collectionName, d = self.queue.get(block=True, timeout=1)
+                self.mainEngine.dbInsert(dbName, collectionName, d)
+            except Empty:
+                pass
+    #-------------------------------------------------------
+    def start(self):
+        """启动"""
+        self.active = True
+        self.thread.start()
+
+    def stop(self):
+        """退出"""
+        if self.active:
+            self.active = False
+            self.thread.join()
+
+    #--------------------------------------------------------
+    def writePmLog(self, content):
+        """快速发出日志文件"""
+        log = VtLogData()
+        log.logContent = content
+        event = Event(type=EVENT_POSITIONMANAGER_LOG)
+        event.dict_['data'] = log
+        self.eventEngine.put(event)

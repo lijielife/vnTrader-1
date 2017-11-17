@@ -1,0 +1,9 @@
+{
+    "working": true,
+
+    "order":["au1712", "GC1708.CME"],
+
+    "trade":["au1712", "GC1708.CME"]
+
+
+}

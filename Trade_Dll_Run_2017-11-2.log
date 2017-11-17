@@ -1,0 +1,190 @@
+2017-12-2 10:19:44 299 |RegisterFront sucess RunThread!
+2017-12-2 10:19:44 300 |ReceiveDataThreadProc Run
+2017-12-2 10:20:23 426 |RegisterFront sucess RunThread!
+2017-12-2 10:20:23 426 |ReceiveDataThreadProc Run
+2017-12-2 10:21:42 7 |RegisterFront sucess RunThread!
+2017-12-2 10:21:42 7 |ReceiveDataThreadProc Run
+2017-12-2 10:22:7 613 |RegisterFront sucess RunThread!
+2017-12-2 10:22:7 613 |ReceiveDataThreadProc Run
+2017-12-2 10:22:30 852 |RegisterFront sucess RunThread!
+2017-12-2 10:22:30 852 |ReceiveDataThreadProc Run
+2017-12-2 10:23:3 660 |RegisterFront sucess RunThread!
+2017-12-2 10:23:3 661 |ReceiveDataThreadProc Run
+2017-12-2 10:23:45 18 |RegisterFront sucess RunThread!
+2017-12-2 10:23:45 19 |ReceiveDataThreadProc Run
+2017-12-2 10:25:41 3 |RegisterFront sucess RunThread!
+2017-12-2 10:25:41 4 |ReceiveDataThreadProc Run
+2017-12-2 10:28:32 428 |RegisterFront sucess RunThread!
+2017-12-2 10:28:32 428 |ReceiveDataThreadProc Run
+2017-12-2 10:29:53 626 |RegisterFront sucess RunThread!
+2017-12-2 10:29:53 627 |ReceiveDataThreadProc Run
+2017-12-2 10:32:41 506 |RegisterFront sucess RunThread!
+2017-12-2 10:32:41 507 |ReceiveDataThreadProc Run
+2017-12-2 10:33:39 557 |RegisterFront sucess RunThread!
+2017-12-2 10:33:39 557 |ReceiveDataThreadProc Run
+2017-12-2 10:39:27 440 |RegisterFront sucess RunThread!
+2017-12-2 10:39:27 440 |ReceiveDataThreadProc Run
+2017-12-2 10:40:8 776 |RegisterFront sucess RunThread!
+2017-12-2 10:40:8 776 |ReceiveDataThreadProc Run
+2017-12-2 10:42:5 954 |RegisterFront sucess RunThread!
+2017-12-2 10:42:5 955 |ReceiveDataThreadProc Run
+2017-12-2 10:42:20 379 |RegisterFront sucess RunThread!
+2017-12-2 10:42:20 380 |ReceiveDataThreadProc Run
+2017-12-2 10:42:53 210 |RegisterFront sucess RunThread!
+2017-12-2 10:42:53 211 |ReceiveDataThreadProc Run
+2017-12-2 10:43:27 61 |RegisterFront sucess RunThread!
+2017-12-2 10:43:27 61 |ReceiveDataThreadProc Run
+2017-12-2 10:53:57 502 |RegisterFront sucess RunThread!
+2017-12-2 10:53:57 502 |ReceiveDataThreadProc Run
+2017-12-2 10:55:24 119 |RegisterFront sucess RunThread!
+2017-12-2 10:55:24 119 |ReceiveDataThreadProc Run
+2017-12-2 10:56:34 59 |RegisterFront sucess RunThread!
+2017-12-2 10:56:34 59 |ReceiveDataThreadProc Run
+2017-12-2 10:57:38 21 |RegisterFront sucess RunThread!
+2017-12-2 10:57:38 22 |ReceiveDataThreadProc Run
+2017-12-2 10:58:13 425 |RegisterFront sucess RunThread!
+2017-12-2 10:58:13 426 |ReceiveDataThreadProc Run
+2017-12-2 10:59:54 186 |RegisterFront sucess RunThread!
+2017-12-2 10:59:54 187 |ReceiveDataThreadProc Run
+2017-12-2 11:1:2 799 |RegisterFront sucess RunThread!
+2017-12-2 11:1:2 800 |ReceiveDataThreadProc Run
+2017-12-2 11:2:56 336 |RegisterFront sucess RunThread!
+2017-12-2 11:2:56 336 |ReceiveDataThreadProc Run
+2017-12-2 11:4:14 3 |RegisterFront sucess RunThread!
+2017-12-2 11:4:14 4 |ReceiveDataThreadProc Run
+2017-12-2 11:4:56 297 |RegisterFront sucess RunThread!
+2017-12-2 11:4:56 297 |ReceiveDataThreadProc Run
+2017-12-2 11:9:39 39 |RegisterFront sucess RunThread!
+2017-12-2 11:9:39 40 |ReceiveDataThreadProc Run
+2017-12-2 13:10:53 410 |RegisterFront sucess RunThread!
+2017-12-2 13:10:53 425 |ReceiveDataThreadProc Run
+2017-12-2 13:10:53 425 |SendInfoThreadProc Run
+2017-12-2 13:12:12 829 |RegisterFront sucess RunThread!
+2017-12-2 13:12:12 829 |ReceiveDataThreadProc Run
+2017-12-2 13:12:12 829 |SendInfoThreadProc Run
+2017-12-2 13:16:53 816 |RegisterFront sucess RunThread!
+2017-12-2 13:16:53 816 |ReceiveDataThreadProc Run
+2017-12-2 13:16:53 816 |SendInfoThreadProc Run
+2017-12-2 13:18:3 134 |RegisterFront sucess RunThread!
+2017-12-2 13:18:3 135 |ReceiveDataThreadProc Run
+2017-12-2 13:18:3 135 |SendInfoThreadProc Run
+2017-12-2 13:30:27 518 |RegisterFront sucess RunThread!
+2017-12-2 13:30:27 519 |ReceiveDataThreadProc Run
+2017-12-2 13:30:27 519 |SendInfoThreadProc Run
+2017-12-2 13:32:25 869 |RegisterFront sucess RunThread!
+2017-12-2 13:32:25 869 |ReceiveDataThreadProc Run
+2017-12-2 13:32:25 869 |SendInfoThreadProc Run
+2017-12-2 13:33:4 736 |RegisterFront sucess RunThread!
+2017-12-2 13:33:4 737 |ReceiveDataThreadProc Run
+2017-12-2 13:33:4 737 |SendInfoThreadProc Run
+2017-12-2 13:35:11 190 |RegisterFront sucess RunThread!
+2017-12-2 13:35:11 191 |ReceiveDataThreadProc Run
+2017-12-2 13:35:11 191 |SendInfoThreadProc Run
+2017-12-2 13:40:28 161 |RegisterFront sucess RunThread!
+2017-12-2 13:40:28 161 |ReceiveDataThreadProc Run
+2017-12-2 13:40:28 161 |SendInfoThreadProc Run
+2017-12-2 13:41:47 901 |RegisterFront sucess RunThread!
+2017-12-2 13:41:47 908 |ReceiveDataThreadProc Run
+2017-12-2 13:41:47 908 |SendInfoThreadProc Run
+2017-12-2 13:43:52 66 |RegisterFront sucess RunThread!
+2017-12-2 13:43:52 66 |ReceiveDataThreadProc Run
+2017-12-2 13:43:52 66 |SendInfoThreadProc Run
+2017-12-2 13:45:16 172 |RegisterFront sucess RunThread!
+2017-12-2 13:45:16 173 |ReceiveDataThreadProc Run
+2017-12-2 13:45:16 173 |SendInfoThreadProc Run
+2017-12-2 13:45:56 675 |RegisterFront sucess RunThread!
+2017-12-2 13:45:56 676 |ReceiveDataThreadProc Run
+2017-12-2 13:45:56 676 |SendInfoThreadProc Run
+2017-12-2 13:48:48 15 |RegisterFront sucess RunThread!
+2017-12-2 13:48:48 15 |ReceiveDataThreadProc Run
+2017-12-2 13:48:48 15 |SendInfoThreadProc Run
+2017-12-2 13:53:16 790 |RegisterFront sucess RunThread!
+2017-12-2 13:53:16 790 |ReceiveDataThreadProc Run
+2017-12-2 13:53:16 790 |SendInfoThreadProc Run
+2017-12-2 13:57:52 598 |RegisterFront sucess RunThread!
+2017-12-2 13:57:52 599 |ReceiveDataThreadProc Run
+2017-12-2 13:57:52 599 |SendInfoThreadProc Run
+2017-12-2 14:6:12 168 |RegisterFront sucess RunThread!
+2017-12-2 14:6:12 169 |ReceiveDataThreadProc Run
+2017-12-2 14:6:12 169 |SendInfoThreadProc Run
+2017-12-2 14:7:46 844 |RegisterFront sucess RunThread!
+2017-12-2 14:7:46 844 |ReceiveDataThreadProc Run
+2017-12-2 14:7:46 844 |SendInfoThreadProc Run
+2017-12-2 14:8:51 212 |RegisterFront sucess RunThread!
+2017-12-2 14:8:51 212 |ReceiveDataThreadProc Run
+2017-12-2 14:8:51 212 |SendInfoThreadProc Run
+2017-12-2 14:10:1 667 |RegisterFront sucess RunThread!
+2017-12-2 14:10:1 667 |ReceiveDataThreadProc Run
+2017-12-2 14:10:1 667 |SendInfoThreadProc Run
+2017-12-2 14:10:51 49 |RegisterFront sucess RunThread!
+2017-12-2 14:10:51 49 |ReceiveDataThreadProc Run
+2017-12-2 14:10:51 49 |SendInfoThreadProc Run
+2017-12-2 14:11:18 943 |RegisterFront sucess RunThread!
+2017-12-2 14:11:18 944 |ReceiveDataThreadProc Run
+2017-12-2 14:11:18 944 |SendInfoThreadProc Run
+2017-12-2 14:14:50 25 |RegisterFront sucess RunThread!
+2017-12-2 14:14:50 25 |ReceiveDataThreadProc Run
+2017-12-2 14:14:50 25 |SendInfoThreadProc Run
+2017-12-2 14:18:59 838 |RegisterFront sucess RunThread!
+2017-12-2 14:18:59 838 |ReceiveDataThreadProc Run
+2017-12-2 14:18:59 838 |SendInfoThreadProc Run
+2017-12-2 14:33:53 218 |RegisterFront sucess RunThread!
+2017-12-2 14:33:53 218 |ReceiveDataThreadProc Run
+2017-12-2 14:33:53 218 |SendInfoThreadProc Run
+2017-12-2 14:34:51 249 |RegisterFront sucess RunThread!
+2017-12-2 14:34:51 249 |ReceiveDataThreadProc Run
+2017-12-2 14:34:51 249 |SendInfoThreadProc Run
+2017-12-2 14:35:47 633 |RegisterFront sucess RunThread!
+2017-12-2 14:35:47 633 |ReceiveDataThreadProc Run
+2017-12-2 14:35:47 633 |SendInfoThreadProc Run
+2017-12-2 14:41:57 331 |RegisterFront sucess RunThread!
+2017-12-2 14:41:57 331 |ReceiveDataThreadProc Run
+2017-12-2 14:41:57 331 |SendInfoThreadProc Run
+2017-12-2 14:43:40 189 |RegisterFront sucess RunThread!
+2017-12-2 14:43:40 189 |ReceiveDataThreadProc Run
+2017-12-2 14:43:40 189 |SendInfoThreadProc Run
+2017-12-2 14:44:40 986 |RegisterFront sucess RunThread!
+2017-12-2 14:44:40 986 |ReceiveDataThreadProc Run
+2017-12-2 14:44:40 986 |SendInfoThreadProc Run
+2017-12-2 14:49:58 407 |RegisterFront sucess RunThread!
+2017-12-2 14:49:58 407 |ReceiveDataThreadProc Run
+2017-12-2 14:49:58 407 |SendInfoThreadProc Run
+2017-12-2 14:52:3 894 |RegisterFront sucess RunThread!
+2017-12-2 14:52:3 894 |ReceiveDataThreadProc Run
+2017-12-2 14:52:3 894 |SendInfoThreadProc Run
+2017-12-2 14:53:42 454 |RegisterFront sucess RunThread!
+2017-12-2 14:53:42 454 |ReceiveDataThreadProc Run
+2017-12-2 14:53:42 454 |SendInfoThreadProc Run
+2017-12-2 15:5:6 789 |RegisterFront sucess RunThread!
+2017-12-2 15:5:6 790 |ReceiveDataThreadProc Run
+2017-12-2 15:5:6 790 |SendInfoThreadProc Run
+2017-12-2 15:30:50 521 |RegisterFront sucess RunThread!
+2017-12-2 15:30:50 521 |ReceiveDataThreadProc Run
+2017-12-2 15:30:50 521 |SendInfoThreadProc Run
+2017-12-2 15:31:39 862 |RegisterFront sucess RunThread!
+2017-12-2 15:31:39 863 |ReceiveDataThreadProc Run
+2017-12-2 15:31:39 863 |SendInfoThreadProc Run
+2017-12-2 17:33:38 906 |RegisterFront sucess RunThread!
+2017-12-2 17:33:38 915 |ReceiveDataThreadProc Run
+2017-12-2 17:33:38 915 |SendInfoThreadProc Run
+2017-12-2 17:35:23 562 |RegisterFront sucess RunThread!
+2017-12-2 17:35:23 563 |ReceiveDataThreadProc Run
+2017-12-2 17:35:23 563 |SendInfoThreadProc Run
+2017-12-2 29:30:54 75 |WSARecvFrom error exit thread!
+2017-12-2 29:30:54 107 |sendInfoToServer error
+2017-12-2 29:31:17 111 |reconnection failed!
+2017-12-2 29:31:17 111 |sendInfoToServer error
+2017-12-2 29:31:38 108 |sendInfoToServer error
+2017-12-2 29:31:59 108 |sendInfoToServer error
+2017-12-2 29:32:20 108 |sendInfoToServer error
+2017-12-2 29:32:41 110 |sendInfoToServer error
+2017-12-2 29:33:2 111 |sendInfoToServer error
+2017-12-2 29:33:23 113 |sendInfoToServer error
+2017-12-2 29:33:44 117 |sendInfoToServer error
+2017-12-2 29:34:5 125 |sendInfoToServer error
+2017-12-2 29:34:26 123 |sendInfoToServer error
+2017-12-2 29:34:47 119 |sendInfoToServer error
+2017-12-2 29:35:8 120 |sendInfoToServer error
+2017-12-2 29:35:8 225 |ReceiveDataThreadProc Run
+2017-12-2 29:35:8 725 |WSARecvFrom error exit thread!
+2017-12-2 29:35:10 829 |ReceiveDataThreadProc Run
