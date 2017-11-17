@@ -786,7 +786,7 @@ class ShzdTdApi(TdApi):
 
         order.vtOrderID = '.'.join([self.gatewayName, order.orderID])
         order.direction = directionMapReverse.get(data['Direction'], DIRECTION_UNKNOWN)
-        order.offset = offsetMapReverse.getdata['CombOffsetFlag'], OFFSET_UNKNOWN)
+        order.offset = offsetMapReverse.get(data['CombOffsetFlag'], OFFSET_UNKNOWN)
         order.status = STATUS_REJECTED
         order.price = data['LimitPrice']
         order.totalVolume = data['VolumeTotalOriginal']

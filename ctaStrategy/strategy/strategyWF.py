@@ -49,16 +49,43 @@ class State1(State):
 
     def inState(self):
         #print 'S1'
+        try:
+            wfr_1min = self.strategy.WF_result_1min[-1]['wf_result']
+        except:
+            wfr_1min = -1;
+        try:
+            wfr_5min = self.strategy.WF_result_5min[-1]['wf_result']
+        except:
+            wfr_5min = -1;
+        try:
+            wfr_60min = self.strategy.WF_result_60min[-1]['wf_result']
+        except:
+            wfr_60min = -1;
+        
+        print "S1  1M: %.2f  5M: %.2f  60M: %.2f" %(wfr_1min, wfr_5min, wfr_60min)
+        
         # if need open
         # Calculate multiframe
+        if self.need_open(wfr_1min, wfr_5min, wfr_60min):
+            self.new_state(State2)
 
-        self.new_state(State2)
+    def need_open(self, wfr_1min, wfr_5min, wfr_60min):
+        if wfr_1min < 0 or wfr_5min < 0 or wfr_60min < 0:
+            return False
+        threshold = self.strategy.threshold
+        if self.strategy.direction_long:
+            return wfr_1min > threshold and wfr_5min > threshold and wfr_60min > threshold
+        else:
+            neg_threshold = 1 - threshold
+            return wfr_1min < neg_threshold and wfr_5min < neg_threshold and wfr_60min < neg_threshold
 
 class State2(State):
     """Open"""
     def onEnterState(self):
         print 'Enter S2'
         # sendorder
+        direction = CTAORDER_BUY if self.strategy.direction_long else CTAORDER_SHORT
+        self.strategy.sendOrder(self.strategy.vtSymbol, direction, 0.0, self.strategy.volume, False, True)
         # 2 ---> 3
         self.new_state(State3)
 
@@ -83,15 +110,38 @@ class State4(State):
 
     def inState(self):
         #print 'S4'
+        try:
+            wfr_1min = self.strategy.WF_result_1min[-1]['wf_result']
+        except:
+            wfr_1min = -1;
+        try:
+            wfr_5min = self.strategy.WF_result_5min[-1]['wf_result']
+        except:
+            wfr_5min = -1;
+        try:
+            wfr_60min = self.strategy.WF_result_60min[-1]['wf_result']
+        except:
+            wfr_60min = -1;
+        print "S4  1M: %.2f  5M: %.2f  60M: %.2f" %(self.strategy.WF_result_1min[-1], self.strategy.WF_result_5min[-1], self.strategy.WF_result_60min[-1])
         # if need close
-        # 4 ---> 5
-        self.new_state(State5)
+        if self.need_close(wfr_1min, wfr_5min, wfr_60min):
+            # 4 ---> 5
+            self.new_state(State5)
+    
+    def need_close(self, wfr_1min, wfr_5min, wfr_60min):
+        if self.strategy.direction_long:
+            return wfr_1min < .5 and wfr_5min < .5 and wfr_60min < .5
+        else:
+            return wfr_1min > .5 and wfr_5min > .5 and wfr_60min > .5
+
 
 class State5(State):
     """Close"""
     def onEnterState(self):
         print 'Enter S5'
         # sendorder
+        direction = CTAORDER_SELL if self.strategy.direction_long else CTAORDER_COVER
+        self.strategy.sendOrder(self.strategy.vtSymbol, direction, 0.0, self.strategy.volume, False, True)
         # 5 ---> 6
         self.new_state(State6)
 
@@ -130,7 +180,6 @@ class WFStrategy(CtaTemplate2):
     mu0 = .05
     mu1 = -.05
 
-
     lambda0 = .005
     lambda1 = .005
     sig = .001
@@ -143,6 +192,9 @@ class WFStrategy(CtaTemplate2):
 
     mu = [mu0, mu1]
 
+    volume = 1
+    direction_long = True
+    threshold = 0.9
     #------------------------------------------------------------------------
     # 策略变量
     count = 0
@@ -154,7 +206,6 @@ class WFStrategy(CtaTemplate2):
     def __init__(self, ctaEngine, setting):
         """Constructor"""
         super(WFStrategy, self).__init__(ctaEngine, setting)
-        self.fok = False
         self.count = 0
         self.pf = ParticleFilter(PARTICLE_NUM)
         self.pf.PF_Init(self.motion_noise, self.sense_noise, self.X_min, self.X_max, self.dX_min, self.dX_max)
@@ -189,7 +240,8 @@ class WFStrategy(CtaTemplate2):
         self.strategy_ready = False
         ticks = self.loadTick(self.vtSymbol, 1)
         for tick in ticks:
-            self.myOnTick(tick)
+            tick.isHistory = True
+            self.onTick(tick)
         del ticks
         self.strategy_ready = True
         
@@ -203,13 +255,11 @@ class WFStrategy(CtaTemplate2):
     def onStop(self):
         """停止策略（必须由用户继承实现）"""
         self.writeCtaLog(u'%s策略停止' %self.name)
-    #----------------------------------------------------------------------
-    def myOnTick(self, tick):
-        tick.isHistory = True
-        self.onTick(tick)
+
     #-----------------------------------------------------------------------
     def onTick(self, tick):
         """收到行情TICK推送（必须由用户继承实现）"""
+        
         # 聚合为1分钟K线
         tickMinute = tick.datetime.minute
 
@@ -295,7 +345,7 @@ class WFStrategy(CtaTemplate2):
         self.aggregate_60min(bar, self.onBar_60min)
         try:
             dY = np.log(self.barSeries_1min[-1].close) - np.log(self.barSeries_1min[-2].close)
-            self.WF_result_1min.append({'datetime':self.barSeries_1min[-1].datetime, 'bar1_close':bar.close, 'wf_result_1':self.wf1.Calculate(dY)[0]})
+            self.WF_result_1min.append({'datetime':self.barSeries_1min[-1].datetime, 'bar1_close':bar.close, 'wf_result':self.wf1.Calculate(dY)[0]})
         except IndexError as e:
             pass
     #----------------------------------------------------------------------
@@ -305,7 +355,7 @@ class WFStrategy(CtaTemplate2):
         try:
             dY = np.log(self.barSeries_5min[-1].close) - np.log(self.barSeries_5min[-2].close)
             #self.WF_result_5min.append(self.wf5.Calculate(dY))
-            self.WF_result_5min.append({'datetime':self.barSeries_5min[-1].datetime, 'wf_result_5':self.wf5.Calculate(dY)[0]})
+            self.WF_result_5min.append({'datetime':self.barSeries_5min[-1].datetime, 'wf_result':self.wf5.Calculate(dY)[0]})
         except IndexError as e:
             pass
 
@@ -316,7 +366,7 @@ class WFStrategy(CtaTemplate2):
         try:
             dY = np.log(self.barSeries_60min[-1].close) - np.log(self.barSeries_60min[-2].close)
             #self.WF_result_60min.append(self.wf60.Calculate(dY))
-            self.WF_result_60min.append({'datetime':self.barSeries_60min[-1].datetime, 'wf_result_60':self.wf60.Calculate(dY)[0]})
+            self.WF_result_60min.append({'datetime':self.barSeries_60min[-1].datetime, 'wf_result':self.wf60.Calculate(dY)[0]})
         except IndexError as e:
             pass
         df_1min = pd.DataFrame(self.WF_result_1min)
