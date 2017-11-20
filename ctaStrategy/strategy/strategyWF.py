@@ -213,6 +213,7 @@ class WFStrategy(CtaTemplate2):
         self.WF_result_1min = []
         self.WF_result_5min = []
         self.WF_result_60min = []
+        self.pos_1min = []
         # 注意策略类中的可变对象属性（通常是list和dict等），在策略初始化时需要重新创建，
         # 否则会出现多个策略实例之间数据共享的情况，有可能导致潜在的策略逻辑错误风险，
         # 策略类中的这些可变对象属性可以选择不写，全都放在__init__下面，写主要是为了阅读
@@ -341,6 +342,7 @@ class WFStrategy(CtaTemplate2):
         # pf output
         self.lastPrice = bar.close;
         self.barSeries_1min.append(bar)
+        self.pos_1min.append({'datetime':bar.datetime, 'pos':self.pos.get(bar.vtSymbol, 0)})
         self.aggregate_5min(bar, self.onBar_5min)
         self.aggregate_60min(bar, self.onBar_60min)
         try:
@@ -371,9 +373,11 @@ class WFStrategy(CtaTemplate2):
         df_1min = pd.DataFrame(self.WF_result_1min)
         df_5min = pd.DataFrame(self.WF_result_5min)
         df_60min = pd.DataFrame(self.WF_result_60min)
+        df_pos_1min = pd.DataFrame(self.pos_1min)
         df_1min.to_csv('results/result1.csv')
         df_5min.to_csv('results/result5.csv')
         df_60min.to_csv('results/result60.csv')
+        df_pos_1min.to_csv('results/pos.csv')
 
     #----------------------------------------------------------------------
     def onOrder(self, order):
