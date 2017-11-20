@@ -37,7 +37,6 @@ class State0(State):
         print 'Enter S0'
 
     def inState(self):
-        #print 'S0'
         if self.strategy.strategy_ready:
             # 0 ---> 1
             self.new_state(State1)
@@ -48,7 +47,6 @@ class State1(State):
         print 'Enter S1'
 
     def inState(self):
-        #print 'S1'
         try:
             wfr_1min = self.strategy.WF_result_1min[-1]['wf_result']
         except:
@@ -98,7 +96,6 @@ class State3(State):
         print 'Enter S3'
 
     def inState(self):
-        #print 'S3'
         if self.strategy.all_traded == True:
             # 3 ---> 4
             self.new_state(State4)
@@ -109,7 +106,6 @@ class State4(State):
         print 'Enter S4'
 
     def inState(self):
-        #print 'S4'
         try:
             wfr_1min = self.strategy.WF_result_1min[-1]['wf_result']
         except:
@@ -146,7 +142,7 @@ class State5(State):
         self.new_state(State6)
 
     def inState(self):
-        #print 'S5'
+        print 'S5'
         pass
 
 class State6(State):
@@ -155,7 +151,6 @@ class State6(State):
         print 'Enter S6'
 
     def inState(self):
-        #print 'S6'
         if self.strategy.all_traded == True:
             # 6 ---> 1
             self.new_state(State1)
@@ -173,13 +168,13 @@ class WFStrategy(CtaTemplate2):
     f = 1.0
     motion_noise = 5.0 * f
     sense_noise = 5.0 * f
-    X_min = 3000.0 * f
-    X_max = 5000.0 * f
+    X_min = 200.0 * f
+    X_max = 300.0 * f
     dX_min = -5.0 * f
     dX_max = 5.0 * f
 
-    mu0 = .05
-    mu1 = -.05
+    mu0 = .0005
+    mu1 = -.0005
 
     lambda0 = .005
     lambda1 = .005
@@ -344,7 +339,6 @@ class WFStrategy(CtaTemplate2):
     def onBar(self, bar):
         """收到Bar推送（必须由用户继承实现）"""
         # pf output
-        #print 'onBar'
         self.lastPrice = bar.close;
         self.barSeries_1min.append(bar)
         self.aggregate_5min(bar, self.onBar_5min)
@@ -357,7 +351,6 @@ class WFStrategy(CtaTemplate2):
         self.fsm.inState()
     #----------------------------------------------------------------------
     def onBar_5min(self, bar):
-        #print 'onBar_5min'
         self.barSeries_5min.append(bar)
         try:
             dY = np.log(self.barSeries_5min[-1].close) - np.log(self.barSeries_5min[-2].close)
@@ -368,7 +361,6 @@ class WFStrategy(CtaTemplate2):
 
     #----------------------------------------------------------------------
     def onBar_60min(self, bar):
-        #print 'onBar_60min'
         self.barSeries_60min.append(bar)
         try:
             dY = np.log(self.barSeries_60min[-1].close) - np.log(self.barSeries_60min[-2].close)
@@ -379,9 +371,9 @@ class WFStrategy(CtaTemplate2):
         df_1min = pd.DataFrame(self.WF_result_1min)
         df_5min = pd.DataFrame(self.WF_result_5min)
         df_60min = pd.DataFrame(self.WF_result_60min)
-        df_1min.to_csv('result1.csv')
-        df_5min.to_csv('result5.csv')
-        df_60min.to_csv('result60.csv')
+        df_1min.to_csv('results/result1.csv')
+        df_5min.to_csv('results/result5.csv')
+        df_60min.to_csv('results/result60.csv')
 
     #----------------------------------------------------------------------
     def onOrder(self, order):
@@ -394,8 +386,9 @@ class WFStrategy(CtaTemplate2):
 
     #----------------------------------------------------------------------
     def onTrade(self, trade):
-        print '-'*50
-        print 'onTrade'
+        # print '-'*50
+        # print 'onTrade'
+        pass
 
 
 
