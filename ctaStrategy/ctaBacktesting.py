@@ -356,7 +356,10 @@ class BacktestingEngine(object):
                         self.strategy.pos[order.vtSymbol] = order.totalVolume
                 else:
                     trade.price = max(order.price, sellBestCrossPrice)
-                    self.strategy.pos[order.vtSymbol] -= order.totalVolume
+                    if order.vtSymbol in self.strategy.pos:
+                        self.strategy.pos[order.vtSymbol] -= order.totalVolume
+                    else:
+                        self.strategy.pos[order.vtSymbol] = -order.totalVolume
                 
                 trade.volume = order.totalVolume
                 trade.tradeTime = str(self.dt)

@@ -5,7 +5,7 @@ WF
 from __future__ import division
 import numpy as np
 import pandas as pd
-
+import vtPath
 from ctaBase import *
 from ctaTemplate2 import CtaTemplate2
 from my_module.particle_filter import ParticleFilter
@@ -72,10 +72,10 @@ class State1(State):
             return False
         threshold = self.strategy.threshold
         if self.strategy.direction_long:
-            return wfr_1min > threshold and wfr_5min > threshold and wfr_60min > threshold
+            return wfr_1min > threshold and wfr_5min > threshold #and wfr_60min > threshold
         else:
             neg_threshold = 1 - threshold
-            return wfr_1min < neg_threshold and wfr_5min < neg_threshold and wfr_60min < neg_threshold
+            return wfr_1min < neg_threshold and wfr_5min < neg_threshold #and wfr_60min < neg_threshold
 
 class State2(State):
     """Open"""
@@ -126,9 +126,9 @@ class State4(State):
     
     def need_close(self, wfr_1min, wfr_5min, wfr_60min):
         if self.strategy.direction_long:
-            return wfr_1min < .5 and wfr_5min < .5 and wfr_60min < .5
+            return wfr_1min < self.strategy.exit_threshold and wfr_5min < self.strategy.exit_threshold #and wfr_60min < .7
         else:
-            return wfr_1min > .5 and wfr_5min > .5 and wfr_60min > .5
+            return wfr_1min > self.strategy.exit_threshold and wfr_5min > self.strategy.exit_threshold #and wfr_60min > .7
 
 
 class State5(State):
@@ -173,11 +173,11 @@ class WFStrategy(CtaTemplate2):
     dX_min = -5.0 * f
     dX_max = 5.0 * f
 
-    mu0 = .0005
-    mu1 = -.0005
+    mu0 = .0003
+    mu1 = -.0003
 
-    lambda0 = .005
-    lambda1 = .005
+    lambda0 = .004
+    lambda1 = .004
     sig = .001
     dt = 1./(60*24)
     #T = len(df_1min)*dt
@@ -190,7 +190,8 @@ class WFStrategy(CtaTemplate2):
 
     volume = 1
     direction_long = True
-    threshold = 0.9
+    threshold = 0.95
+    exit_threshold = .9
     #------------------------------------------------------------------------
     # 策略变量
     count = 0
@@ -370,14 +371,14 @@ class WFStrategy(CtaTemplate2):
             self.WF_result_60min.append({'datetime':self.barSeries_60min[-1].datetime, 'wf_result':self.wf60.Calculate(dY)[0]})
         except IndexError as e:
             pass
-        df_1min = pd.DataFrame(self.WF_result_1min)
-        df_5min = pd.DataFrame(self.WF_result_5min)
-        df_60min = pd.DataFrame(self.WF_result_60min)
-        df_pos_1min = pd.DataFrame(self.pos_1min)
-        df_1min.to_csv('results/result1.csv')
-        df_5min.to_csv('results/result5.csv')
-        df_60min.to_csv('results/result60.csv')
-        df_pos_1min.to_csv('results/pos.csv')
+        # df_1min = pd.DataFrame(self.WF_result_1min)
+        # df_5min = pd.DataFrame(self.WF_result_5min)
+        # df_60min = pd.DataFrame(self.WF_result_60min)
+        # df_pos_1min = pd.DataFrame(self.pos_1min)
+        # df_1min.to_csv('results/result1.csv')
+        # df_5min.to_csv('results/result5.csv')
+        # df_60min.to_csv('results/result60.csv')
+        # df_pos_1min.to_csv('results/pos.csv')
 
     #----------------------------------------------------------------------
     def onOrder(self, order):
