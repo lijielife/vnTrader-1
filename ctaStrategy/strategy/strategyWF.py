@@ -85,7 +85,7 @@ class State2(State):
         print 'Enter S2'
         # sendorder
         direction = CTAORDER_BUY if self.strategy.direction_long else CTAORDER_SHORT
-        self.strategy.sendOrder(self.strategy.vtSymbol, direction, 0.0, self.strategy.volume, False, True)
+        self.strategy.sendOrder(self.strategy.vtSymbol, direction, self.strategy.lastPrice, self.strategy.volume, self)#, False, False)
         # 2 ---> 3
         self.new_state(State3)
 
@@ -122,7 +122,7 @@ class State4(State):
             wfr_60min = self.strategy.WF_result_60min[-1]['wf_result']
         except:
             wfr_60min = -1;
-        print "S4  1M: %.2f  5M: %.2f  60M: %.2f" %(self.strategy.WF_result_1min[-1], self.strategy.WF_result_5min[-1], self.strategy.WF_result_60min[-1])
+        print "S4  1M: %.2f  5M: %.2f  60M: %.2f" %(wfr_1min, wfr_5min, wfr_60min)
         # if need close
         if self.need_close(wfr_1min, wfr_5min, wfr_60min):
             # 4 ---> 5
@@ -141,7 +141,7 @@ class State5(State):
         print 'Enter S5'
         # sendorder
         direction = CTAORDER_SELL if self.strategy.direction_long else CTAORDER_COVER
-        self.strategy.sendOrder(self.strategy.vtSymbol, direction, 0.0, self.strategy.volume, False, True)
+        self.strategy.sendOrder(self.strategy.vtSymbol, direction, self.strategy.lastPrice, self.strategy.volume, self)#, False, False)
         # 5 ---> 6
         self.new_state(State6)
 
@@ -207,6 +207,7 @@ class WFStrategy(CtaTemplate2):
     def __init__(self, ctaEngine, setting):
         """Constructor"""
         super(WFStrategy, self).__init__(ctaEngine, setting)
+        self.lastPrice = 0.0
         self.count = 0
         self.pf = ParticleFilter(PARTICLE_NUM)
         self.pf.PF_Init(self.motion_noise, self.sense_noise, self.X_min, self.X_max, self.dX_min, self.dX_max)
@@ -236,14 +237,17 @@ class WFStrategy(CtaTemplate2):
         self.aggregate_60min = self.create_aggregator(60)
 
         self.fsm = State(self)
-
-        self.vtSymbol = self.vtSymbols[0]
-        self.strategy_ready = False
-        ticks = self.loadTick(self.vtSymbol, 1)
-        for tick in ticks:
-            tick.isHistory = True
-            self.onTick(tick)
-        del ticks
+        try:
+            self.vtSymbol = self.vtSymbols[0]
+            self.strategy_ready = False
+            ticks = self.loadTick(self.vtSymbols[0], 1)
+            for tick in ticks:
+                tick.isHistory = True
+                self.onTick(tick)
+            del ticks
+        except Exception as e:
+            self.vtSymbol = 'au1706'
+            print str(e)
         self.strategy_ready = True
         
         
@@ -260,7 +264,7 @@ class WFStrategy(CtaTemplate2):
     #-----------------------------------------------------------------------
     def onTick(self, tick):
         """收到行情TICK推送（必须由用户继承实现）"""
-        
+        self.lastPrice = tick.lastPrice
         # 聚合为1分钟K线
         tickMinute = tick.datetime.minute
 
@@ -340,7 +344,8 @@ class WFStrategy(CtaTemplate2):
     def onBar(self, bar):
         """收到Bar推送（必须由用户继承实现）"""
         # pf output
-        print 'onBar'
+        #print 'onBar'
+        self.lastPrice = bar.close;
         self.barSeries_1min.append(bar)
         self.aggregate_5min(bar, self.onBar_5min)
         self.aggregate_60min(bar, self.onBar_60min)
@@ -349,9 +354,10 @@ class WFStrategy(CtaTemplate2):
             self.WF_result_1min.append({'datetime':self.barSeries_1min[-1].datetime, 'bar1_close':bar.close, 'wf_result':self.wf1.Calculate(dY)[0]})
         except IndexError as e:
             pass
+        self.fsm.inState()
     #----------------------------------------------------------------------
     def onBar_5min(self, bar):
-        print 'onBar_5min'
+        #print 'onBar_5min'
         self.barSeries_5min.append(bar)
         try:
             dY = np.log(self.barSeries_5min[-1].close) - np.log(self.barSeries_5min[-2].close)
@@ -362,7 +368,7 @@ class WFStrategy(CtaTemplate2):
 
     #----------------------------------------------------------------------
     def onBar_60min(self, bar):
-        print 'onBar_60min'
+        #print 'onBar_60min'
         self.barSeries_60min.append(bar)
         try:
             dY = np.log(self.barSeries_60min[-1].close) - np.log(self.barSeries_60min[-2].close)
@@ -391,3 +397,39 @@ class WFStrategy(CtaTemplate2):
         print '-'*50
         print 'onTrade'
 
+
+
+def backtesting():
+    # 以下内容是一段回测脚本的演示，用户可以根据自己的需求修改
+    # 建议使用ipython notebook或者spyder来做回测
+    # 同样可以在命令模式下进行回测（一行一行输入运行）
+    import vtPath
+    from ctaBacktesting import BacktestingEngine
+    
+    # 创建回测引擎
+    engine = BacktestingEngine()
+    
+    # 设置引擎的回测模式为K线
+    engine.setBacktestingMode(engine.BAR_MODE)
+
+    # 设置回测用的数据起始日期
+    engine.setStartDate('20160601')
+    
+    # 载入历史数据到引擎中
+    engine.setDatabase(MINUTE_DB_NAME, 'au1706')
+    
+    # 设置产品相关参数
+    engine.setSlippage(0.05)     # 股指1跳
+    engine.setRate(0.3/10000)   # 万0.3
+    engine.setSize(1)         # 股指合约大小    
+    
+    # 在引擎中创建策略对象
+    engine.initStrategy(WFStrategy, {})
+    
+    # 开始跑回测
+    engine.runBacktesting()
+    
+    # 显示回测结果
+    # spyder或者ipython notebook中运行时，会弹出盈亏曲线图
+    # 直接在cmd中回测则只会打印一些回测数值
+    engine.showBacktestingResult()

@@ -7,7 +7,7 @@ from ctaBase import *
 from ctaTemplate2 import CtaTemplate2
 from vtConstant import *
 import cPickle
-from my_module.particle_filter import ParticleFilter
+#from my_module.particle_filter import ParticleFilter
 
 
 ########################################################################
@@ -33,8 +33,8 @@ class TestStrategy(CtaTemplate2):
         super(TestStrategy, self).__init__(ctaEngine, setting)
         self.fok = False
         self.count = 0
-        self.pf = ParticleFilter(10000)
-        self.pf.PF_Init(5.0, 5.0, 1200.0, 1400.0, -5.0, 5.0)
+        #self.pf = ParticleFilter(10000)
+        #self.pf.PF_Init(5.0, 5.0, 1200.0, 1400.0, -5.0, 5.0)
         
         # 注意策略类中的可变对象属性（通常是list和dict等），在策略初始化时需要重新创建，
         # 否则会出现多个策略实例之间数据共享的情况，有可能导致潜在的策略逻辑错误风险，
@@ -110,7 +110,7 @@ class TestStrategy(CtaTemplate2):
     def onBar(self, bar):
         """收到Bar推送（必须由用户继承实现）"""
         # pf output
-        filtered_X, filtered_dX, predicted = self.pf.Calculate(bar.close)
+        #filtered_X, filtered_dX, predicted = self.pf.Calculate(bar.close)
         PF = {'type':'PF', 'data':filtered_X}
         Kline = {'type':'Kline', 'data':bar.__dict__}
         content = cPickle.dumps([Kline, PF])

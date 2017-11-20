@@ -215,6 +215,7 @@ class BacktestingEngine(object):
         """
         self.strategy = strategyClass(self, setting)
         self.strategy.name = self.strategy.className
+        self.strategy.sendOrder = self.sendOrder
         
     #----------------------------------------------------------------------
     def sendOrder(self, vtSymbol, orderType, price, volume, strategy):
@@ -330,6 +331,7 @@ class BacktestingEngine(object):
             
             # 如果发生了成交
             if buyCross or sellCross:
+                print 'cross'
                 # 推送成交数据
                 self.tradeCount += 1            # 成交编号自增1
                 tradeID = str(self.tradeCount)
@@ -348,10 +350,13 @@ class BacktestingEngine(object):
                 # 3. 则在实际中的成交价会是100而不是105，因为委托发出时市场的最优价格是100
                 if buyCross:
                     trade.price = min(order.price, buyBestCrossPrice)
-                    self.strategy.pos += order.totalVolume
+                    if order.vtSymbol in self.strategy.pos:
+                        self.strategy.pos[order.vtSymbol] += order.totalVolume
+                    else:
+                        self.strategy.pos[order.vtSymbol] = order.totalVolume
                 else:
                     trade.price = max(order.price, sellBestCrossPrice)
-                    self.strategy.pos -= order.totalVolume
+                    self.strategy.pos[order.vtSymbol] -= order.totalVolume
                 
                 trade.volume = order.totalVolume
                 trade.tradeTime = str(self.dt)
