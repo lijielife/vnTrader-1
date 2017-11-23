@@ -3,8 +3,11 @@
 WF
 """
 from __future__ import division
+
 import numpy as np
 import pandas as pd
+import talib
+
 import vtPath
 from ctaBase import *
 from ctaTemplate2 import CtaTemplate2
@@ -69,6 +72,8 @@ class State1(State):
 
     def need_open(self, wfr_1min, wfr_5min, wfr_60min):
         if wfr_1min < 0 or wfr_5min < 0 or wfr_60min < 0:
+            return False
+        if self.strategy.atrValue < self.strategy.atrMa:
             return False
         threshold = self.strategy.threshold
         if self.strategy.direction_long:
@@ -164,7 +169,11 @@ class WFStrategy(CtaTemplate2):
 
     #------------------------------------------------------------------------
     # 策略参数
-    #f = 6.7 / 31.1034768
+    # atr
+    atrLength = 22          # 计算ATR指标的窗口数   
+    atrMaLength = 10        # 计算ATR均线的窗口数
+
+    # pf
     f = 1.0
     motion_noise = 5.0 * f
     sense_noise = 5.0 * f
@@ -173,31 +182,42 @@ class WFStrategy(CtaTemplate2):
     dX_min = -5.0 * f
     dX_max = 5.0 * f
 
-    mu0 = .0003
-    mu1 = -.0003
-
-    lambda0 = .004
-    lambda1 = .004
+    # wf
+    mu0 = .0004
+    mu1 = -.0004
+    lambda0 = .003
+    lambda1 = .003
     sig = .001
-    dt = 1./(60*24)
-    #T = len(df_1min)*dt
 
+    # others
+    volume = 1
+    direction_long = True
+    threshold = 0.97
+    exit_threshold = .92
+    #----------------------------------------------
+    dt = 1./(60*24)
     # Slow switching Q
     Q  = np.array([[-lambda0, lambda0],
                    [ lambda1,-lambda1]])
 
     mu = [mu0, mu1]
 
-    volume = 1
-    direction_long = True
-    threshold = 0.95
-    exit_threshold = .9
     #------------------------------------------------------------------------
     # 策略变量
+    bufferSize = 100
     count = 0
     bar = None
     bar_5min = None
     barMinute = EMPTY_STRING
+
+    openArray = np.zeros(bufferSize)
+    highArray = np.zeros(bufferSize)
+    lowArray = np.zeros(bufferSize)
+    closeArray = np.zeros(bufferSize)
+
+    atrArray = np.zeros(bufferSize)
+    atrValue = 0
+    atrMa = 0
 
     #----------------------------------------------------------------------
     def __init__(self, ctaEngine, setting):
@@ -210,6 +230,7 @@ class WFStrategy(CtaTemplate2):
         self.barSeries_1min = []
         self.barSeries_5min = []
         self.barSeries_60min = []
+
 
         self.WF_result_1min = []
         self.WF_result_5min = []
@@ -338,20 +359,43 @@ class WFStrategy(CtaTemplate2):
                     bar_aggr.close = bar.close
         return aggregator
     #----------------------------------------------------------------------
+    def updateArrays(self, bar):
+        # 保存K线数据
+        self.closeArray[0:self.bufferSize-1] = self.closeArray[1:self.bufferSize]
+        self.highArray[0:self.bufferSize-1] = self.highArray[1:self.bufferSize]
+        self.lowArray[0:self.bufferSize-1] = self.lowArray[1:self.bufferSize]
+        
+        self.closeArray[-1] = bar.close
+        self.highArray[-1] = bar.high
+        self.lowArray[-1] = bar.low
+
+    #----------------------------------------------------------------------
     def onBar(self, bar):
         """收到Bar推送（必须由用户继承实现）"""
-        # pf output
         self.lastPrice = bar.close;
         self.barSeries_1min.append(bar)
+        self.updateArrays(bar)
+
         self.pos_1min.append({'datetime':bar.datetime, 'pos':self.pos.get(bar.vtSymbol, 0)})
         self.aggregate_5min(bar, self.onBar_5min)
         self.aggregate_60min(bar, self.onBar_60min)
+
+        # atr
+        self.atrValue = talib.ATR(self.highArray,
+                                  self.lowArray,
+                                  self.closeArray,
+                                  self.atrLength)[-1]
+        self.atrArray[0:self.bufferSize-1] = self.atrArray[1:self.bufferSize]
+        self.atrArray[-1] = self.atrValue
+        self.atrMa = talib.MA(self.atrArray, self.atrMaLength)[-1]
+        print self.atrValue, self.atrMa
         try:
             dY = np.log(self.barSeries_1min[-1].close) - np.log(self.barSeries_1min[-2].close)
             self.WF_result_1min.append({'datetime':self.barSeries_1min[-1].datetime, 'bar1_close':bar.close, 'wf_result':self.wf1.Calculate(dY)[0]})
         except IndexError as e:
             pass
         self.fsm.inState()
+
     #----------------------------------------------------------------------
     def onBar_5min(self, bar):
         self.barSeries_5min.append(bar)

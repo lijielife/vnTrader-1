@@ -1,8 +1,9 @@
+
 {
-    "frontAddress": "222.73.105.170", 
-    "frontPort": 7961, 
-    "marketAddress": "222.73.108.50", 
-    "marketPort": 9001, 
-    "userId": "PX200003",
+    "frontAddress": "222.73.108.60", 
+    "frontPort": 7992, 
+    "marketAddress": "222.73.120.40", 
+    "marketPort": 9004, 
+    "userId": "ZC0002",
     "userPwd": "888888"
 }

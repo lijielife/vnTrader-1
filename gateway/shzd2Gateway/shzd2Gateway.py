@@ -67,7 +67,7 @@ exchangeCurrencyMap[EXCHANGE_CME] = 'USD'
 exchangeCurrencyMap[EXCHANGE_HKEX] = 'HKD-HKFE'
 exchangeCurrencyMapReverse = {v:k for k,v in exchangeCurrencyMap.items()}
 
-AUTO_CODE = '55822DC39D9316D5111D9EED00C1CED81B6F0DCEA8D97DDEBD350D939CF8A9D304E3C73A742CFB80'
+AUTH_CODE = '55822DC39D9316D5111D9EED00C1CED81B6F0DCEA8D97DDEBD350D939CF8A9D304E3C73A742CFB80'
 
 ###########################################################################
 class Shzd2Gateway(VtGateway):
@@ -113,7 +113,7 @@ class Shzd2Gateway(VtGateway):
             self.onLog(log)
             return
         self.setting = setting
-        self.mdApi.connect(userID, password, tdAddress, mdAddress)
+        #self.mdApi.connect(userID, password, tdAddress, mdAddress)
         self.tdApi.connect(userID, password, tdAddress)
         self.initQuery()
 
@@ -262,7 +262,6 @@ class ShzdMdApi(MdApi):
         err.gatewayName = self.gatewayName
         err.errorID = error['ErrorID']
         err.errorMsg = error['ErrorMsg']
-        print 'md error'
         import pprint 
         pprint.pprint(err.__dict__)
         self.gateway.onError(err)
@@ -332,7 +331,7 @@ class ShzdMdApi(MdApi):
             self.createSHZdMarketApi(path)
 
             self.init()
-            self.authonInfo(AUTO_CODE)
+            self.authonInfo(AUTH_CODE)
             self.registerLoginFront(self.loginFrontAddress)
             sleep(1)
 
@@ -833,7 +832,7 @@ class ShzdTdApi(TdApi):
                 os.makedirs(path)
             self.createSHZdTraderApi(path)
             self.init()
-            self.authonInfo(AUTO_CODE)
+            self.authonInfo(AUTH_CODE)
             self.registerFront(self.address)
         else:
             self.login()
@@ -974,41 +973,7 @@ class ShzdTdApi(TdApi):
         self.gateway.onLog(log) 
 
 #######################################
-# def testtd():
-#     import sys
-#     from PyQt4 import QtCore
-#     app = QtCore.QCoreApplication(sys.argv)
-
-#     def print_log(event):
-#         log = event.dict_['data']
-#         print ':'.join([log.logTime, log.logContent])
-
-#     eventEngine = EventEngine2()
-#     eventEngine.register(EVENT_LOG, print_log)
-#     eventEngine.start()
-
-#     gateway = Shzd2Gateway(eventEngine)
-#     gateway.connect()
-
-#     sleep(1)
-#     req = VtOrderReq()
-#     req.direction = DIRECTION_LONG
-#     req.exchange = 'CME'
-#     req.symbol = 'GC1712'
-#     req.volume = 1
-#     req.price = 1275.0
-#     req.priceType = PRICETYPE_LIMITPRICE
-#     vtOrderID = gateway.sendOrder(req)
-
-#     sleep(1)
-#     import pprint
-#     pprint.pprint(gateway.tdApi.OrderID_OrderSysID_Map)
-#     cancelreq = VtCancelOrderReq()
-#     cancelreq.orderID = vtOrderID
-#     gateway.cancelOrder(cancelreq)
-#     sys.exit(app.exec_())
-
-def testmd():
+def testtd():
     import sys
     from PyQt4 import QtCore
     app = QtCore.QCoreApplication(sys.argv)
@@ -1023,14 +988,48 @@ def testmd():
 
     gateway = Shzd2Gateway(eventEngine)
     gateway.connect()
-    subreq1 = VtSubscribeReq()
-    subreq1.symbol = 'GC1712'
-    subreq1.exchange = 'CME'
 
-    subreq2 = VtSubscribeReq()
-    subreq2.symbol = 'CL1712'
-    subreq2.exchange = 'CME'
-    gateway.subscribe(subreq1)
-    gateway.subscribe(subreq2)
+    # sleep(1)
+    # req = VtOrderReq()
+    # req.direction = DIRECTION_LONG
+    # req.exchange = 'CME'
+    # req.symbol = 'GC1712'
+    # req.volume = 1
+    # req.price = 1275.0
+    # req.priceType = PRICETYPE_LIMITPRICE
+    # vtOrderID = gateway.sendOrder(req)
 
+    # sleep(1)
+    # import pprint
+    # pprint.pprint(gateway.tdApi.OrderID_OrderSysID_Map)
+    # cancelreq = VtCancelOrderReq()
+    # cancelreq.orderID = vtOrderID
+    # gateway.cancelOrder(cancelreq)
     sys.exit(app.exec_())
+
+# def testmd():
+#     import sys
+#     from PyQt4 import QtCore
+#     app = QtCore.QCoreApplication(sys.argv)
+
+#     def print_log(event):
+#         log = event.dict_['data']
+#         print ':'.join([log.logTime, log.logContent])
+
+#     eventEngine = EventEngine2()
+#     eventEngine.register(EVENT_LOG, print_log)
+#     eventEngine.start()
+
+#     gateway = Shzd2Gateway(eventEngine)
+#     gateway.connect()
+#     subreq1 = VtSubscribeReq()
+#     subreq1.symbol = 'GC1712'
+#     subreq1.exchange = 'CME'
+
+#     subreq2 = VtSubscribeReq()
+#     subreq2.symbol = 'CL1712'
+#     subreq2.exchange = 'CME'
+#     gateway.subscribe(subreq1)
+#     gateway.subscribe(subreq2)
+
+#     sys.exit(app.exec_())
