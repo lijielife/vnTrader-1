@@ -7,6 +7,8 @@ from __future__ import division
 import numpy as np
 import pandas as pd
 import talib
+from copy import copy
+from datetime import datetime, timedelta
 
 import vtPath
 from ctaBase import *
@@ -15,10 +17,11 @@ from my_module.particle_filter import ParticleFilter
 from my_module.wonham_filter import WonhamFilter
 from vtConstant import *
 
-PARTICLE_NUM = 10000
+PARTICLE_NUM = 1000
 
 # 主状态基类
 class State:
+    last_traded_order = None
     def __init__(self, strategy):
         # 0
         self.strategy = strategy
@@ -71,7 +74,7 @@ class State1(State):
             self.new_state(State2)
 
     def need_open(self, wfr_1min, wfr_5min, wfr_60min):
-        if wfr_1min < 0 or wfr_5min < 0 or wfr_60min < 0:
+        if wfr_1min < 0 :#or wfr_5min < 0 or wfr_60min < 0:
             return False
         if self.strategy.atrValue < self.strategy.atrMa:
             return False
@@ -102,6 +105,8 @@ class State3(State):
 
     def inState(self):
         if self.strategy.all_traded == True:
+            self.last_traded_order = copy(self.strategy.last_traded_order)
+            self.last_traded_time = copy(self.strategy.last_traded_time)
             # 3 ---> 4
             self.new_state(State4)
 
@@ -128,12 +133,32 @@ class State4(State):
         if self.need_close(wfr_1min, wfr_5min, wfr_60min):
             # 4 ---> 5
             self.new_state(State5)
+
+        if self.need_stoploss():
+            # 4 ---> 5
+            self.new_state(State5)
     
     def need_close(self, wfr_1min, wfr_5min, wfr_60min):
+        # if need stoploss
+        
         if self.strategy.direction_long:
-            return wfr_1min < self.strategy.exit_threshold and wfr_5min < self.strategy.exit_threshold #and wfr_60min < .7
+            return wfr_1min < self.strategy.exit_threshold# and wfr_5min < self.strategy.exit_threshold and wfr_60min < .7
         else:
-            return wfr_1min > self.strategy.exit_threshold and wfr_5min > self.strategy.exit_threshold #and wfr_60min > .7
+            return wfr_1min > self.strategy.exit_threshold# and wfr_5min > self.strategy.exit_threshold and wfr_60min > .7
+
+    def need_stoploss(self):
+        if self.strategy.lastPrice - self.adjusted_cost() < self.strategy.stoploss_value:
+            return True
+        else:
+            return False
+
+    def adjusted_cost(self):
+        f = 1.0
+        if self.last_traded_order.direction == DIRECTION_SHORT:
+            f = -1.0
+        time_span = self.strategy.lastTick.datetime - self.last_traded_time
+        ac = self.last_traded_order.price*(1 + f * self.strategy.stoploss_discount * time_span.seconds/(3600*24*365))
+        return ac
 
 
 class State5(State):
@@ -175,25 +200,29 @@ class WFStrategy(CtaTemplate2):
 
     # pf
     f = 1.0
-    motion_noise = 5.0 * f
-    sense_noise = 5.0 * f
-    X_min = 200.0 * f
-    X_max = 300.0 * f
-    dX_min = -5.0 * f
-    dX_max = 5.0 * f
+    motion_noise = 2.0 * f
+    sense_noise = 2.0 * f
+    X_min = 2000.0 * f
+    X_max = 4000.0 * f
+    dX_min = -50.0 * f
+    dX_max = 50.0 * f
 
     # wf
-    mu0 = .0004
-    mu1 = -.0004
-    lambda0 = .003
-    lambda1 = .003
+    mu0 = .0003
+    mu1 = -mu0
+    lambda0 = .006
+    lambda1 = lambda0
     sig = .001
 
     # others
     volume = 1
-    direction_long = True
-    threshold = 0.97
-    exit_threshold = .92
+    direction_long = False
+    threshold = 0.90
+    exit_threshold = .7
+
+    # stoploss
+    stoploss_discount = .1
+    stoploss_value = 10
     #----------------------------------------------
     dt = 1./(60*24)
     # Slow switching Q
@@ -225,8 +254,12 @@ class WFStrategy(CtaTemplate2):
         super(WFStrategy, self).__init__(ctaEngine, setting)
         self.lastPrice = 0.0
         self.count = 0
-        self.pf = ParticleFilter(PARTICLE_NUM)
-        self.pf.PF_Init(self.motion_noise, self.sense_noise, self.X_min, self.X_max, self.dX_min, self.dX_max)
+        self.pfs = []
+        for i in range(3):
+            pf = ParticleFilter(PARTICLE_NUM)
+            pf.PF_Init(self.motion_noise, self.sense_noise, self.X_min, self.X_max, self.dX_min, self.dX_max)
+            self.pfs.append(pf)
+
         self.barSeries_1min = []
         self.barSeries_5min = []
         self.barSeries_60min = []
@@ -264,7 +297,7 @@ class WFStrategy(CtaTemplate2):
                 self.onTick(tick)
             del ticks
         except Exception as e:
-            self.vtSymbol = 'au1706'
+            self.vtSymbol = 'rb1705'
             print str(e)
         self.strategy_ready = True
         
@@ -277,12 +310,21 @@ class WFStrategy(CtaTemplate2):
     #----------------------------------------------------------------------
     def onStop(self):
         """停止策略（必须由用户继承实现）"""
+        df_1min = pd.DataFrame(self.WF_result_1min)
+        df_5min = pd.DataFrame(self.WF_result_5min)
+        # df_60min = pd.DataFrame(self.WF_result_60min)
+        df_pos_1min = pd.DataFrame(self.pos_1min)
+        df_1min.to_csv('results/result1.csv')
+        df_5min.to_csv('results/result5.csv')
+        # df_60min.to_csv('results/result60.csv')
+        df_pos_1min.to_csv('results/pos.csv')
         self.writeCtaLog(u'%s策略停止' %self.name)
 
     #-----------------------------------------------------------------------
     def onTick(self, tick):
         """收到行情TICK推送（必须由用户继承实现）"""
         self.lastPrice = tick.lastPrice
+        self.lastTick = copy(tick)
         # 聚合为1分钟K线
         tickMinute = tick.datetime.minute
 
@@ -346,6 +388,7 @@ class WFStrategy(CtaTemplate2):
                     bar_aggr.high = bar.high
                     bar_aggr.low = bar.low
                     bar_aggr.close = bar.close
+                    bar_aggr.close_ = bar.close_
                 
                     bar_aggr.date = bar.date
                     bar_aggr.time = bar.time
@@ -373,6 +416,10 @@ class WFStrategy(CtaTemplate2):
     def onBar(self, bar):
         """收到Bar推送（必须由用户继承实现）"""
         self.lastPrice = bar.close;
+        bar.close_ = (bar.high + bar.low)/2
+        for i in range(3):
+            bar.close_ = self.pfs[i].Calculate(bar.close_)[0]
+        
         self.barSeries_1min.append(bar)
         self.updateArrays(bar)
 
@@ -390,8 +437,8 @@ class WFStrategy(CtaTemplate2):
         self.atrMa = talib.MA(self.atrArray, self.atrMaLength)[-1]
         print self.atrValue, self.atrMa
         try:
-            dY = np.log(self.barSeries_1min[-1].close) - np.log(self.barSeries_1min[-2].close)
-            self.WF_result_1min.append({'datetime':self.barSeries_1min[-1].datetime, 'bar1_close':bar.close, 'wf_result':self.wf1.Calculate(dY)[0]})
+            dY = np.log(self.barSeries_1min[-1].close_) - np.log(self.barSeries_1min[-2].close_)
+            self.WF_result_1min.append({'datetime':self.barSeries_1min[-1].datetime, 'bar1_close':bar.close,'bar1_close_pf':bar.close_, 'wf_result':self.wf1.Calculate(dY)[0]})
         except IndexError as e:
             pass
         self.fsm.inState()
@@ -400,8 +447,8 @@ class WFStrategy(CtaTemplate2):
     def onBar_5min(self, bar):
         self.barSeries_5min.append(bar)
         try:
-            dY = np.log(self.barSeries_5min[-1].close) - np.log(self.barSeries_5min[-2].close)
-            #self.WF_result_5min.append(self.wf5.Calculate(dY))
+            dY = np.log(self.barSeries_5min[-1].close_) - np.log(self.barSeries_5min[-2].close_)
+            self.WF_result_5min.append(self.wf5.Calculate(dY))
             self.WF_result_5min.append({'datetime':self.barSeries_5min[-1].datetime, 'wf_result':self.wf5.Calculate(dY)[0]})
         except IndexError as e:
             pass
@@ -409,20 +456,13 @@ class WFStrategy(CtaTemplate2):
     #----------------------------------------------------------------------
     def onBar_60min(self, bar):
         self.barSeries_60min.append(bar)
-        try:
-            dY = np.log(self.barSeries_60min[-1].close) - np.log(self.barSeries_60min[-2].close)
-            #self.WF_result_60min.append(self.wf60.Calculate(dY))
-            self.WF_result_60min.append({'datetime':self.barSeries_60min[-1].datetime, 'wf_result':self.wf60.Calculate(dY)[0]})
-        except IndexError as e:
-            pass
-        # df_1min = pd.DataFrame(self.WF_result_1min)
-        # df_5min = pd.DataFrame(self.WF_result_5min)
-        # df_60min = pd.DataFrame(self.WF_result_60min)
-        # df_pos_1min = pd.DataFrame(self.pos_1min)
-        # df_1min.to_csv('results/result1.csv')
-        # df_5min.to_csv('results/result5.csv')
-        # df_60min.to_csv('results/result60.csv')
-        # df_pos_1min.to_csv('results/pos.csv')
+        # try:
+        #     dY = np.log(self.barSeries_60min[-1].close) - np.log(self.barSeries_60min[-2].close)
+        #     #self.WF_result_60min.append(self.wf60.Calculate(dY))
+        #     self.WF_result_60min.append({'datetime':self.barSeries_60min[-1].datetime, 'wf_result':self.wf60.Calculate(dY)[0]})
+        # except IndexError as e:
+        #     pass
+        
 
     #----------------------------------------------------------------------
     def onOrder(self, order):
@@ -430,6 +470,8 @@ class WFStrategy(CtaTemplate2):
         print "onOrder(): orderTime = %r ; vtOrderID = %r; status = %s" % (order.orderTime, order.vtOrderID, order.status)
         if order.status == STATUS_ALLTRADED:
             self.all_traded = True
+            self.last_traded_order = order
+            self.last_traded_time = datetime.now()
         self.fsm.inState()
         self.all_traded = False
 
@@ -455,13 +497,13 @@ def backtesting():
     engine.setBacktestingMode(engine.BAR_MODE)
 
     # 设置回测用的数据起始日期
-    engine.setStartDate('20160601')
+    engine.setStartDate('20160501')
     
     # 载入历史数据到引擎中
-    engine.setDatabase(MINUTE_DB_NAME, 'au1706')
+    engine.setDatabase(MINUTE_DB_NAME, 'rb1705')
     
     # 设置产品相关参数
-    engine.setSlippage(0.05)     # 股指1跳
+    engine.setSlippage(1)     # 股指1跳
     engine.setRate(0.3/10000)   # 万0.3
     engine.setSize(1)         # 股指合约大小    
     

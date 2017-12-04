@@ -16,14 +16,14 @@ if __name__ == '__main__':
     drEngine = mainEngine.drEngine
     drEngine.loadSetting()
     dl = DataLoader()
-    df_rs = dl.LoadBar('au1706', '20160501', '20161230', bin='1min')
+    df_rs = dl.LoadBar('rb1705', '20160501', '20161230', bin='1min')
     dict_rs = df_rs.to_dict(orient='split')
     df_rs = None
     N = len(dict_rs['data'])
 
     for i in range(N):
         bar = CtaBarData()
-        bar.vtSymbol = 'au1706'
+        bar.vtSymbol = 'rb1705'
         bar.datetime = dict_rs['index'][i].to_pydatetime()
         data = dict_rs['data'][i]
         bar.open = data[0]

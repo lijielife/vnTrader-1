@@ -561,7 +561,7 @@ class ShzdTdApi(TdApi):
                 direction = DIRECTION_SHORT
 
             # 获取持仓缓存对象
-            posName = '.'.join([data['InstrumentID'], direction])
+            posName = '.'.join([data['InvestorID'], data['InstrumentID'], direction])
             if posName in self.posDict:
                 pos = self.posDict[posName]
             else:
@@ -579,6 +579,7 @@ class ShzdTdApi(TdApi):
             # 汇总总仓
             pos.position = data['HoldBuyVolume'] + data['HoldSaleVolume']
             pos.positionProfit += data['PositionProfit']
+            pos.investorID = data['InvestorID']
             
         # 查询回报结束
         if last:

@@ -188,6 +188,7 @@ class BacktestingEngine(object):
             func(data)     
             
         self.output(u'数据回放结束')
+        self.strategy.onStop()
         
     #----------------------------------------------------------------------
     def newBar(self, bar):

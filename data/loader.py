@@ -30,15 +30,19 @@ class DataLoader(object):
 
     def _loadTick(self, symbol, files):
         df_rtn = pd.DataFrame()
-        for file in files:
-            filename = '/'.join([HDF_DIR, file])
+        for f in files:
+            filename = '/'.join([HDF_DIR, f])
             df = pd.read_hdf(filename, 'tick')
+            
             try:
                 df = df.loc[symbol]
                 df_rtn = pd.concat([df_rtn, df])
                 df = None
             except KeyError:
                 print "%s not found" %symbol
+                df = None
+                del df
+                
         return df_rtn
         
 
@@ -46,13 +50,14 @@ class DataLoader(object):
         files = self._searchFiles(start_date, end_date)
         print files
         df = pd.DataFrame()
-        for file in files:
-            df_tick = self._loadTick(symbol, [file])
+        for f in files:
+            df_tick = self._loadTick(symbol, [f])
             try:
                 Vol = df_tick['Volume']
                 start_vol = Vol[0]
                 dVol = Vol.diff()
                 dVol[0] = start_vol
+
                 dVol.rename('dVol', inplace=True)
                 df_tick = pd.concat([df_tick, dVol], axis=1)
                 df_tick = df_tick.loc[:, ['lastPrice','dVol']].dropna()
@@ -69,7 +74,7 @@ class DataLoader(object):
 if __name__ == '__main__':
     dl = DataLoader()
 
-    df_rs = dl.LoadBar('au1706', '20161230', '20161230', bin='1min')
+    df_rs = dl.LoadBar('rb1705', '20161230', '20161230', bin='1min')
     print df_rs
     # plt.figure()
     # fig1 = plt.subplot(211)
