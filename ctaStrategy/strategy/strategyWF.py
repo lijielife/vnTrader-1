@@ -18,6 +18,7 @@ from my_module.wonham_filter import WonhamFilter
 from vtConstant import *
 
 PARTICLE_NUM = 1000
+__BACKTESTING__ = True
 
 # 主状态基类
 class State:
@@ -66,7 +67,7 @@ class State1(State):
         except:
             wfr_60min = -1
         
-        print "S1  1M: %.2f  5M: %.2f  60M: %.2f" %(wfr_1min, wfr_5min, wfr_60min)
+        #print "S1  1M: %.2f  5M: %.2f  60M: %.2f" %(wfr_1min, wfr_5min, wfr_60min)
         
         # if need open
         # Calculate multiframe
@@ -91,7 +92,8 @@ class State2(State):
         print 'Enter S2'
         # sendorder
         direction = CTAORDER_BUY if self.strategy.direction_long else CTAORDER_SHORT
-        self.strategy.sendOrder(self.strategy.vtSymbol, direction, self.strategy.lastPrice, self.strategy.volume, self)#, False, False)
+        f = 1 if self.strategy.direction_long else -1
+        self.strategy.sendOrder(self.strategy.vtSymbol, direction, self.strategy.lastPrice + f * 10, self.strategy.volume, self)#, False, False)
         # 2 ---> 3
         self.new_state(State3)
 
@@ -113,9 +115,13 @@ class State3(State):
 class State4(State):
     """Wait Close"""
     def onEnterState(self):
+        self.intra_trade_high = self.strategy.lastBar.high
+        self.intra_trade_low = self.strategy.lastBar.low
         print 'Enter S4'
 
     def inState(self):
+        self.intra_trade_high = max(self.strategy.lastBar.high, self.intra_trade_high)
+        self.intra_trade_low = min(self.strategy.lastBar.low, self.intra_trade_low)
         try:
             wfr_1min = self.strategy.WF_result_1min[-1]['wf_result']
         except:
@@ -128,15 +134,21 @@ class State4(State):
             wfr_60min = self.strategy.WF_result_60min[-1]['wf_result']
         except:
             wfr_60min = -1;
-        print "S4  1M: %.2f  5M: %.2f  60M: %.2f" %(wfr_1min, wfr_5min, wfr_60min)
+        #print "S4  1M: %.2f  5M: %.2f  60M: %.2f" %(wfr_1min, wfr_5min, wfr_60min)
+        if self.need_stoploss():
+            # 4 ---> 5
+            self.new_state(State5)
+            return
+        if self.need_trailing_stoploss():
+            # 4 ---> 5
+            self.new_state(State5)
+            return
         # if need close
         if self.need_close(wfr_1min, wfr_5min, wfr_60min):
             # 4 ---> 5
             self.new_state(State5)
+            return
 
-        if self.need_stoploss():
-            # 4 ---> 5
-            self.new_state(State5)
     
     def need_close(self, wfr_1min, wfr_5min, wfr_60min):
         # if need stoploss
@@ -147,10 +159,17 @@ class State4(State):
             return wfr_1min > self.strategy.exit_threshold# and wfr_5min > self.strategy.exit_threshold and wfr_60min > .7
 
     def need_stoploss(self):
-        if self.strategy.lastPrice - self.adjusted_cost() < self.strategy.stoploss_value:
-            return True
+        if self.strategy.direction_long:
+            return self.strategy.lastPrice - self.adjusted_cost() < -self.strategy.stoploss_value
         else:
-            return False
+            return self.adjusted_cost() - self.strategy.lastPrice < -self.strategy.stoploss_value
+
+    def need_trailing_stoploss(self):
+        if self.strategy.direction_long:
+            return self.strategy.lastPrice < self.intra_trade_high * .8
+        else:
+            return self.strategy.lastPrice > self.intra_trade_low * .8
+        
 
     def adjusted_cost(self):
         f = 1.0
@@ -167,7 +186,8 @@ class State5(State):
         print 'Enter S5'
         # sendorder
         direction = CTAORDER_SELL if self.strategy.direction_long else CTAORDER_COVER
-        self.strategy.sendOrder(self.strategy.vtSymbol, direction, self.strategy.lastPrice, self.strategy.volume, self)#, False, False)
+        f = 1 if self.strategy.direction_long else -1
+        self.strategy.sendOrder(self.strategy.vtSymbol, direction, self.strategy.lastPrice - f * 10, self.strategy.volume, self)#, False, False)
         # 5 ---> 6
         self.new_state(State6)
 
@@ -216,13 +236,13 @@ class WFStrategy(CtaTemplate2):
 
     # others
     volume = 1
-    direction_long = False
-    threshold = 0.90
-    exit_threshold = .7
+    direction_long = True
+    threshold = 0.95
+    exit_threshold = .5
 
     # stoploss
-    stoploss_discount = .1
-    stoploss_value = 10
+    stoploss_discount = .3
+    stoploss_value = 20
     #----------------------------------------------
     dt = 1./(60*24)
     # Slow switching Q
@@ -324,7 +344,7 @@ class WFStrategy(CtaTemplate2):
     def onTick(self, tick):
         """收到行情TICK推送（必须由用户继承实现）"""
         self.lastPrice = tick.lastPrice
-        self.lastTick = copy(tick)
+        self.lastTick = tick
         # 聚合为1分钟K线
         tickMinute = tick.datetime.minute
 
@@ -415,8 +435,13 @@ class WFStrategy(CtaTemplate2):
     #----------------------------------------------------------------------
     def onBar(self, bar):
         """收到Bar推送（必须由用户继承实现）"""
-        self.lastPrice = bar.close;
+        self.lastPrice = bar.close
+        self.lastBar = bar
         bar.close_ = (bar.high + bar.low)/2
+        if __BACKTESTING__:
+            self.lastTick = CtaTickData()
+            self.lastTick.lastPrice = bar.close
+            self.lastTick.datetime = bar.datetime
         for i in range(3):
             bar.close_ = self.pfs[i].Calculate(bar.close_)[0]
         
@@ -435,7 +460,7 @@ class WFStrategy(CtaTemplate2):
         self.atrArray[0:self.bufferSize-1] = self.atrArray[1:self.bufferSize]
         self.atrArray[-1] = self.atrValue
         self.atrMa = talib.MA(self.atrArray, self.atrMaLength)[-1]
-        print self.atrValue, self.atrMa
+        #print self.atrValue, self.atrMa
         try:
             dY = np.log(self.barSeries_1min[-1].close_) - np.log(self.barSeries_1min[-2].close_)
             self.WF_result_1min.append({'datetime':self.barSeries_1min[-1].datetime, 'bar1_close':bar.close,'bar1_close_pf':bar.close_, 'wf_result':self.wf1.Calculate(dY)[0]})
@@ -470,8 +495,11 @@ class WFStrategy(CtaTemplate2):
         print "onOrder(): orderTime = %r ; vtOrderID = %r; status = %s" % (order.orderTime, order.vtOrderID, order.status)
         if order.status == STATUS_ALLTRADED:
             self.all_traded = True
-            self.last_traded_order = order
-            self.last_traded_time = datetime.now()
+            #self.last_traded_order = order
+            if  __BACKTESTING__:
+                self.last_traded_time = datetime.strptime(order.orderTime, '%Y-%m-%d %H:%M:%S')
+            else:
+                self.last_traded_time = datetime.now()
         self.fsm.inState()
         self.all_traded = False
 
@@ -479,6 +507,7 @@ class WFStrategy(CtaTemplate2):
     def onTrade(self, trade):
         # print '-'*50
         # print 'onTrade'
+        self.last_traded_order = trade
         pass
 
 

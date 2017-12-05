@@ -332,7 +332,7 @@ class BacktestingEngine(object):
             
             # 如果发生了成交
             if buyCross or sellCross:
-                print 'cross'
+                
                 # 推送成交数据
                 self.tradeCount += 1            # 成交编号自增1
                 tradeID = str(self.tradeCount)
@@ -350,6 +350,7 @@ class BacktestingEngine(object):
                 # 2. 假设在上一根K线结束(也是当前K线开始)的时刻，策略发出的委托为限价105
                 # 3. 则在实际中的成交价会是100而不是105，因为委托发出时市场的最优价格是100
                 if buyCross:
+                    print order.price, buyBestCrossPrice
                     trade.price = min(order.price, buyBestCrossPrice)
                     if order.vtSymbol in self.strategy.pos:
                         self.strategy.pos[order.vtSymbol] += order.totalVolume
