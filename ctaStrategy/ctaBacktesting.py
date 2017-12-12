@@ -986,11 +986,14 @@ if __name__ == '__main__':
     engine.initStrategy(EmaDemoStrategy, {})
     
     # 开始跑回测
-    engine.runBacktesting()
+    try:
+        engine.runBacktesting()
     
     # 显示回测结果
     # spyder或者ipython notebook中运行时，会弹出盈亏曲线图
     # 直接在cmd中回测则只会打印一些回测数值
-    engine.showBacktestingResult()
+        engine.showBacktestingResult()
+    except Exception as e:
+        print str(e)
     
     

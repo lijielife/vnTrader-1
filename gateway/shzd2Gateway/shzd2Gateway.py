@@ -834,6 +834,7 @@ class ShzdTdApi(TdApi):
             self.createSHZdTraderApi(path)
             self.init()
             self.authonInfo(AUTH_CODE)
+            self.getTradingDay()
             self.registerFront(self.address)
         else:
             self.login()

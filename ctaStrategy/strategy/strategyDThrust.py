@@ -1,11 +1,9 @@
 # encoding: UTF-8
 """
-WF
+dual thrust
 """
 from __future__ import division
 
-import numpy as np
-import pandas as pd
 import talib
 from copy import copy
 from datetime import datetime, timedelta
@@ -13,11 +11,8 @@ from datetime import datetime, timedelta
 import vtPath
 from ctaBase import *
 from ctaTemplate2 import CtaTemplate3
-from my_module.particle_filter import ParticleFilter
-from my_module.wonham_filter import WonhamFilter
 from vtConstant import *
 
-PARTICLE_NUM = 1000
 __BACKTESTING__ = True
 MAX_NUMBER = 10000000
 MIN_NUMBER = 0
@@ -27,6 +22,8 @@ class State:
     last_traded_order = None
     intra_trade_high = MIN_NUMBER
     intra_trade_low = MAX_NUMBER
+    up_break = False
+    down_break = False
     def __init__(self, strategy):
         # 0
         self.strategy = strategy
@@ -46,56 +43,38 @@ class State0(State):
     """Initialization"""
     def onEnterState(self):
         print 'Enter S0'
-
-    def inState(self):
-        if self.strategy.strategy_ready:
+        try:
+            ticks = self.strategy.loadTick(self.strategy.vtSymbol, self.strategy.N)
+            for tick in ticks:
+                tick.isHistory = True
+                self.strategy.onTick(tick)
+            del ticks
+        except Exception as e:
+            print str(e)
+        else:
             # 0 ---> 1
             self.new_state(State1)
+
+    def inState(self):
+        pass
 
 class State1(State):
     """Waiting for trading signal"""
     def onEnterState(self):
         print 'Enter S1'
+        #if new trading day and breakthough
+        # check up_break or down_break
+        # 1 ---> 2
 
     def inState(self):
-        try:
-            wfr_1min = self.strategy.WF_result_1min[-1]['wf_result']
-        except:
-            wfr_1min = -1
-        try:
-            wfr_5min = self.strategy.WF_result_5min[-1]['wf_result']
-        except:
-            wfr_5min = -1
-        try:
-            wfr_60min = self.strategy.WF_result_60min[-1]['wf_result']
-        except:
-            wfr_60min = -1
-        
-        #print "S1  1M: %.2f  5M: %.2f  60M: %.2f" %(wfr_1min, wfr_5min, wfr_60min)
-        
-        # if need open
-        # Calculate multiframe
-        if self.need_open(wfr_1min, wfr_5min, wfr_60min):
-            self.new_state(State2)
-
-    def need_open(self, wfr_1min, wfr_5min, wfr_60min):
-        if wfr_1min < 0 :#or wfr_5min < 0 or wfr_60min < 0:
-            return False
-        if self.strategy.atrValue < self.strategy.atrMa:
-            return False
-        threshold = self.strategy.threshold
-        if self.strategy.direction_long:
-            return wfr_1min > threshold and wfr_5min > threshold #and wfr_60min > threshold
-        else:
-            neg_threshold = 1 - threshold
-            return wfr_1min < neg_threshold and wfr_5min < neg_threshold #and wfr_60min < neg_threshold
+        pass
 
 class State2(State):
     """Open"""
     def onEnterState(self):
         print 'Enter S2'
         # sendorder
-        direction = CTAORDER_BUY if self.strategy.direction_long else CTAORDER_SHORT
+        direction = CTAORDER_BUY if self.up_break else CTAORDER_SHORT
         f = 1 if self.strategy.direction_long else -1
         self.strategy.sendOrder(self.strategy.vtSymbol, direction, self.strategy.lastPrice + f * 10, self.strategy.volume, self)#, False, False)
         # 2 ---> 3
@@ -126,18 +105,6 @@ class State4(State):
     def inState(self):
         self.intra_trade_high = max(self.strategy.lastBar.high, self.intra_trade_high)
         self.intra_trade_low = min(self.strategy.lastBar.low, self.intra_trade_low)
-        try:
-            wfr_1min = self.strategy.WF_result_1min[-1]['wf_result']
-        except:
-            wfr_1min = -1;
-        try:
-            wfr_5min = self.strategy.WF_result_5min[-1]['wf_result']
-        except:
-            wfr_5min = -1;
-        try:
-            wfr_60min = self.strategy.WF_result_60min[-1]['wf_result']
-        except:
-            wfr_60min = -1;
         #print "S4  1M: %.2f  5M: %.2f  60M: %.2f" %(wfr_1min, wfr_5min, wfr_60min)
         if self.need_stoploss():
             # 4 ---> 5
@@ -149,22 +116,7 @@ class State4(State):
             print 'trailing stoploss'
             self.new_state(State5)
             return
-        # if need close
-        if self.need_close(wfr_1min, wfr_5min, wfr_60min):
-            # 4 ---> 5
-            print 'normal exit'
-            self.new_state(State5)
-            return
-
     
-    def need_close(self, wfr_1min, wfr_5min, wfr_60min):
-        # if need stoploss
-        
-        if self.strategy.direction_long:
-            return wfr_1min < self.strategy.exit_threshold# and wfr_5min < self.strategy.exit_threshold and wfr_60min < .7
-        else:
-            return wfr_1min > self.strategy.exit_threshold# and wfr_5min > self.strategy.exit_threshold and wfr_60min > .7
-
     def need_stoploss(self):
         if self.strategy.direction_long:
             return self.strategy.lastPrice - self.adjusted_cost() < -self.strategy.stoploss_value
@@ -216,58 +168,23 @@ class State6(State):
         
 
 ########################################################################
-class WFStrategy(CtaTemplate2):
+class DThrustStrategy(CtaTemplate2):
     
-    className = 'WFStrategy'
+    className = 'DThrustStrategy'
     author = u''
 
     #------------------------------------------------------------------------
     # 策略参数
-    # atr
-    atrLength = 22          # 计算ATR指标的窗口数   
-    atrMaLength = 10        # 计算ATR均线的窗口数
-
-    # pf
-    f = 1.0
-    motion_noise = 2.0 * f
-    sense_noise = 2.0 * f
-    X_min = 2000.0 * f
-    X_max = 4000.0 * f
-    dX_min = -50.0 * f
-    dX_max = 50.0 * f
-
-    # wf
-    # inter-day
-    #mu0 = .0003
-    #mu1 = -mu0
-    #lambda0 = .006
-    #lambda1 = lambda0
-    #sig = .001
-
-    # intra-day
-    mu0 = .001
-    mu1 = -.001
-    lambda0 = .0001
-    lambda1 = lambda0
-    sig = .0007
-
+    N = 5
+    k1 = 0.7
+    k2 = 0.7
     # others
     volume = 1
-    direction_long = True
-    threshold = 0.95
-    exit_threshold = .5
-
     # stoploss
     stoploss_discount = .3
     stoploss_value = 20
     trailing_percentage = 2
     #----------------------------------------------
-    dt = 1./(60*24)
-    # Slow switching Q
-    Q  = np.array([[-lambda0, lambda0],
-                   [ lambda1,-lambda1]])
-
-    mu = [mu0, mu1]
 
     #------------------------------------------------------------------------
     # 策略变量
@@ -282,62 +199,25 @@ class WFStrategy(CtaTemplate2):
     lowArray = np.zeros(bufferSize)
     closeArray = np.zeros(bufferSize)
 
-    atrArray = np.zeros(bufferSize)
-    atrValue = 0
-    atrMa = 0
-
     #----------------------------------------------------------------------
     def __init__(self, ctaEngine, setting):
         """Constructor"""
-        super(WFStrategy, self).__init__(ctaEngine, setting)
+        super(DThrustStrategy, self).__init__(ctaEngine, setting)
         self.lastPrice = 0.0
-        self.count = 0
-        self.pfs = []
-        for i in range(3):
-            pf = ParticleFilter(PARTICLE_NUM)
-            pf.PF_Init(self.motion_noise, self.sense_noise, self.X_min, self.X_max, self.dX_min, self.dX_max)
-            self.pfs.append(pf)
-
         self.barSeries_1min = []
-        self.barSeries_5min = []
-        self.barSeries_60min = []
 
-
-        self.WF_result_1min = []
-        self.WF_result_5min = []
-        self.WF_result_60min = []
-        self.pos_1min = []
         # 注意策略类中的可变对象属性（通常是list和dict等），在策略初始化时需要重新创建，
         # 否则会出现多个策略实例之间数据共享的情况，有可能导致潜在的策略逻辑错误风险，
         # 策略类中的这些可变对象属性可以选择不写，全都放在__init__下面，写主要是为了阅读
         # 策略时方便（更多是个编程习惯的选择）        
         self.all_traded = False
-        self.wf1 = WonhamFilter()
-        self.wf5 = WonhamFilter()
-        self.wf60 =WonhamFilter()
-        self.wf1.WF_Init(self.dt, self.Q, self.mu, self.sig)
-        self.wf5.WF_Init(self.dt*5, self.Q, self.mu, self.sig)
-        self.wf60.WF_Init(self.dt*60, self.Q, self.mu, self.sig)
     #----------------------------------------------------------------------
     def onInit(self):
         """初始化策略（必须由用户继承实现）"""
         self.writeCtaLog(u'%s策略初始化' %self.name)
-        self.aggregate_5min = self.create_aggregator(5)
-        self.aggregate_60min = self.create_aggregator(60)
-
+        self.vtSymbol = self.vtSymbols[0]
         self.fsm = State(self)
-        try:
-            self.vtSymbol = self.vtSymbols[0]
-            self.strategy_ready = False
-            ticks = self.loadTick(self.vtSymbols[0], 1)
-            for tick in ticks:
-                tick.isHistory = True
-                self.onTick(tick)
-            del ticks
-        except Exception as e:
-            self.vtSymbol = 'rb1705'
-            print str(e)
-        self.strategy_ready = True
+
         
         
     #----------------------------------------------------------------------
@@ -348,14 +228,6 @@ class WFStrategy(CtaTemplate2):
     #----------------------------------------------------------------------
     def onStop(self):
         """停止策略（必须由用户继承实现）"""
-        df_1min = pd.DataFrame(self.WF_result_1min)
-        df_5min = pd.DataFrame(self.WF_result_5min)
-        # df_60min = pd.DataFrame(self.WF_result_60min)
-        df_pos_1min = pd.DataFrame(self.pos_1min)
-        df_1min.to_csv('results/result1.csv')
-        df_5min.to_csv('results/result5.csv')
-        # df_60min.to_csv('results/result60.csv')
-        df_pos_1min.to_csv('results/pos.csv')
         self.writeCtaLog(u'%s策略停止' %self.name)
 
     #-----------------------------------------------------------------------
@@ -470,42 +342,14 @@ class WFStrategy(CtaTemplate2):
         self.aggregate_5min(bar, self.onBar_5min)
         self.aggregate_60min(bar, self.onBar_60min)
 
-        # atr
-        self.atrValue = talib.ATR(self.highArray,
-                                  self.lowArray,
-                                  self.closeArray,
-                                  self.atrLength)[-1]
-        self.atrArray[0:self.bufferSize-1] = self.atrArray[1:self.bufferSize]
-        self.atrArray[-1] = self.atrValue
-        self.atrMa = talib.MA(self.atrArray, self.atrMaLength)[-1]
-        #print self.atrValue, self.atrMa
-        try:
-            dY = np.log(self.barSeries_1min[-1].close_) - np.log(self.barSeries_1min[-2].close_)
-            self.WF_result_1min.append({'datetime':self.barSeries_1min[-1].datetime, 'bar1_close':bar.close,'bar1_close_pf':bar.close_, 'wf_result':self.wf1.Calculate(dY)[0]})
-        except IndexError as e:
-            pass
         self.fsm.inState()
 
     #----------------------------------------------------------------------
     def onBar_5min(self, bar):
-        self.barSeries_5min.append(bar)
-        try:
-            dY = np.log(self.barSeries_5min[-1].close_) - np.log(self.barSeries_5min[-2].close_)
-            self.WF_result_5min.append(self.wf5.Calculate(dY))
-            self.WF_result_5min.append({'datetime':self.barSeries_5min[-1].datetime, 'wf_result':self.wf5.Calculate(dY)[0]})
-        except IndexError as e:
-            pass
-
+        pass
     #----------------------------------------------------------------------
     def onBar_60min(self, bar):
-        self.barSeries_60min.append(bar)
-        # try:
-        #     dY = np.log(self.barSeries_60min[-1].close) - np.log(self.barSeries_60min[-2].close)
-        #     #self.WF_result_60min.append(self.wf60.Calculate(dY))
-        #     self.WF_result_60min.append({'datetime':self.barSeries_60min[-1].datetime, 'wf_result':self.wf60.Calculate(dY)[0]})
-        # except IndexError as e:
-        #     pass
-        
+        pass        
 
     #----------------------------------------------------------------------
     def onOrder(self, order):
