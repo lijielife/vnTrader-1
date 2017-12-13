@@ -4,14 +4,17 @@ dual thrust
 """
 from __future__ import division
 
+import numpy as np
+
 import talib
 from copy import copy
 from datetime import datetime, timedelta
 
 import vtPath
 from ctaBase import *
-from ctaTemplate2 import CtaTemplate3
+from ctaTemplate2 import CtaTemplate2
 from vtConstant import *
+from my_module.ring_buffer import ring_buffer
 
 __BACKTESTING__ = True
 MAX_NUMBER = 10000000
@@ -22,8 +25,9 @@ class State:
     last_traded_order = None
     intra_trade_high = MIN_NUMBER
     intra_trade_low = MAX_NUMBER
-    up_break = False
-    down_break = False
+    hist_hlc_dict = {}
+    direction = DIRECTION_UNKNOWN
+    traded_price = -1;
     def __init__(self, strategy):
         # 0
         self.strategy = strategy
@@ -34,10 +38,53 @@ class State:
         self.onEnterState()
 
     def onEnterState(self):
-        raise NotImplementedError
+        pass
     
     def inState(self):
-        raise NotImplementedError
+        pass
+
+    def onEvent(self, event_type):
+        pass
+
+    def need_stoploss(self):
+        if self.direction == DIRECTION_LONG:
+            pnl = self.strategy.lastPrice - self.last_traded_order.price
+            need_sl =  pnl < -self.strategy.stoploss_value
+            if need_sl:
+                print 'stoploss long pnl = %.1f' % pnl
+            return need_sl
+        elif self.direction == DIRECTION_SHORT:
+            pnl = self.last_traded_order.price - self.strategy.lastPrice
+            need_sl = pnl < -self.strategy.stoploss_value
+            if need_sl:
+                print 'stoploss short pnl = %.1f' % pnl
+            return need_sl
+
+    def need_trailing_stoploss(self):
+        if self.direction == DIRECTION_LONG:
+            return self.strategy.lastPrice < self.intra_trade_high *(1 - self.strategy.trailing_percentage/100.0)
+        elif self.direction == DIRECTION_SHORT:
+            return self.strategy.lastPrice > self.intra_trade_low * (1 - self.strategy.trailing_percentage/100.0)
+
+    def adjusted_cost(self):
+        f = 1.0
+        if self.last_traded_order.direction == DIRECTION_SHORT:
+            f = -1.0
+        time_span = self.strategy.lastTick.datetime - self.last_traded_time
+        ac = self.last_traded_order.price*(1 + f * self.strategy.stoploss_discount * time_span.seconds/(3600*24*365))
+        return ac
+
+    def update_cost_data(self):
+        self.intra_trade_high = self.strategy.lastBar.high
+        self.intra_trade_low = self.strategy.lastBar.low
+
+    def update_intra_trade_data(self):
+        self.intra_trade_high = max(self.strategy.lastBar.high, self.intra_trade_high)
+        self.intra_trade_low = min(self.strategy.lastBar.low, self.intra_trade_low)
+
+    def reset_intra_trade_data(self):
+        self.intra_trade_high = MIN_NUMBER
+        self.intra_trade_low = MAX_NUMBER
 
 class State0(State):
     """Initialization"""
@@ -51,37 +98,108 @@ class State0(State):
             del ticks
         except Exception as e:
             print str(e)
-        else:
-            # 0 ---> 1
-            self.new_state(State1)
+        # 0 ---> 1
+        self.new_state(State7)
 
     def inState(self):
         pass
+    
 
 class State1(State):
     """Waiting for trading signal"""
     def onEnterState(self):
         print 'Enter S1'
-        #if new trading day and breakthough
-        # check up_break or down_break
-        # 1 ---> 2
+        self.direction = DIRECTION_UNKNOWN
+        # recalculate HH, HC, LC, L
+        self.hist_hlc_dict = self.strategy.calc_hlc_from_ring_buffer()
+        today_open = self.strategy.today_open
+        m = max(self.hist_hlc_dict['HH']-self.hist_hlc_dict['LC'], self.hist_hlc_dict['HC']-self.hist_hlc_dict['LL'])
+        self.long_trigger = today_open + m * self.strategy.k1
+        self.short_trigger = today_open - m * self.strategy.k2
+        print 'S1: open = %.1f, long_trigger = %.1f, short_trigger = %.1f' %(today_open, self.long_trigger, self.short_trigger)
 
     def inState(self):
-        pass
+        #if new trading day and breakthough
+        # check up_break or down_break
+        self.update_intra_trade_data()
+        #check stoploss
+        if self.need_stoploss():
+            # 1 ---> 5
+            print 'S1 stoploss'
+            self.new_state(State5)
+            return
+        if self.need_trailing_stoploss():
+            # 1 ---> 5
+            print 'S1 trailing stoploss'
+            self.new_state(State5)
+            return
+        if self.strategy.lastPrice > self.long_trigger:
+            print 'LONG'
+            self.direction = DIRECTION_LONG
+            # 1 ---> 2
+            self.new_state(State2)
+        elif self.strategy.lastPrice < self.short_trigger:
+            print 'SHORT'
+            self.direction = DIRECTION_SHORT
+            # 1 ---> 2
+            self.new_state(State2)
+    
+    def onEvent(self, event_type):
+        if event_type == "NEW_DAY":
+            self.new_state(State1)
+
 
 class State2(State):
     """Open"""
     def onEnterState(self):
         print 'Enter S2'
         # sendorder
-        direction = CTAORDER_BUY if self.up_break else CTAORDER_SHORT
-        f = 1 if self.strategy.direction_long else -1
-        self.strategy.sendOrder(self.strategy.vtSymbol, direction, self.strategy.lastPrice + f * 10, self.strategy.volume, self)#, False, False)
-        # 2 ---> 3
-        self.new_state(State3)
+        pos = self.strategy.pos.get(self.strategy.vtSymbol, 0)
+        if pos > 0:
+            #hold long
+            if self.direction == DIRECTION_LONG:
+                # 2 ---> 4
+                self.new_state(State4)
+                return
+            else:
+                # close first
+                self.strategy.sendOrder(self.strategy.vtSymbol, CTAORDER_SELL, self.strategy.lastPrice - 10, pos, self.strategy)
+                # 2 ---> 2cd
+                self.new_state(State2cd)
+                return
+        elif pos < 0:
+            #hold short
+            if self.direction == DIRECTION_SHORT:
+                # 2 ---> 4
+                self.new_state(State4)
+                return
+            else:
+                # close first
+                self.strategy.sendOrder(self.strategy.vtSymbol, CTAORDER_COVER, self.strategy.lastPrice + 10, -pos, self.strategy)
+                # 2 ---> 2cd
+                self.new_state(State2cd)
+                return
+        else:
+            #hold net
+            direction = CTAORDER_BUY if self.direction==DIRECTION_LONG else CTAORDER_SHORT
+            f = 1 if direction==CTAORDER_BUY else -1
+            self.strategy.sendOrder(self.strategy.vtSymbol, direction, self.strategy.lastPrice + f * 10, self.strategy.volume, self.strategy)
+            # 2 ---> 3
+            self.new_state(State3)
+            return
 
     def inState(self):
         pass
+
+class State2cd(State):
+    "Closing remaining position"
+    def onEnterState(self):
+        pass
+    def inState(self):
+        if self.strategy.all_traded == True:
+            # 2cd ---> 2
+            self.reset_intra_trade_data()
+            self.new_state(State2)
 
 class State3(State):
     """Opening"""
@@ -94,67 +212,48 @@ class State3(State):
             self.last_traded_time = copy(self.strategy.last_traded_time)
             # 3 ---> 4
             self.new_state(State4)
+    def onEvent(self, event_type):
+        self.new_state(State1)
 
 class State4(State):
-    """Wait Close"""
+    """idle : stop loss check"""
     def onEnterState(self):
-        self.intra_trade_high = self.strategy.lastBar.high
-        self.intra_trade_low = self.strategy.lastBar.low
         print 'Enter S4'
+        self.update_cost_data()
 
     def inState(self):
-        self.intra_trade_high = max(self.strategy.lastBar.high, self.intra_trade_high)
-        self.intra_trade_low = min(self.strategy.lastBar.low, self.intra_trade_low)
-        #print "S4  1M: %.2f  5M: %.2f  60M: %.2f" %(wfr_1min, wfr_5min, wfr_60min)
+        self.update_intra_trade_data()
         if self.need_stoploss():
             # 4 ---> 5
-            print 'stoploss'
+            print 'S4 stoploss'
             self.new_state(State5)
             return
         if self.need_trailing_stoploss():
             # 4 ---> 5
-            print 'trailing stoploss'
+            print 'S4 trailing stoploss'
             self.new_state(State5)
             return
     
-    def need_stoploss(self):
-        if self.strategy.direction_long:
-            return self.strategy.lastPrice - self.adjusted_cost() < -self.strategy.stoploss_value
-        else:
-            return self.adjusted_cost() - self.strategy.lastPrice < -self.strategy.stoploss_value
-
-    def need_trailing_stoploss(self):
-        if self.strategy.direction_long:
-            return self.strategy.lastPrice < self.intra_trade_high *(1 - self.strategy.trailing_percentage/100.0)
-        else:
-            return self.strategy.lastPrice > self.intra_trade_low * (1 - self.strategy.trailing_percentage/100.0)
-        
-
-    def adjusted_cost(self):
-        f = 1.0
-        if self.last_traded_order.direction == DIRECTION_SHORT:
-            f = -1.0
-        time_span = self.strategy.lastTick.datetime - self.last_traded_time
-        ac = self.last_traded_order.price*(1 + f * self.strategy.stoploss_discount * time_span.seconds/(3600*24*365))
-        return ac
+    def onEvent(self, event_type):
+        if event_type == "NEW_DAY":
+            self.new_state(State1)
 
 
 class State5(State):
     """Close"""
     def onEnterState(self):
-        self.intra_trade_high = MIN_NUMBER
-        self.intra_trade_low = MAX_NUMBER
         print 'Enter S5'
         # sendorder
-        direction = CTAORDER_SELL if self.strategy.direction_long else CTAORDER_COVER
-        f = 1 if self.strategy.direction_long else -1
-        self.strategy.sendOrder(self.strategy.vtSymbol, direction, self.strategy.lastPrice - f * 10, self.strategy.volume, self)#, False, False)
+        direction = CTAORDER_SELL if self.direction==DIRECTION_LONG else CTAORDER_COVER
+        f = 1 if self.direction==DIRECTION_LONG else -1
+        self.strategy.sendOrder(self.strategy.vtSymbol, direction, self.strategy.lastPrice - f * 10, self.strategy.volume, self.strategy)
         # 5 ---> 6
         self.new_state(State6)
 
     def inState(self):
         print 'S5'
         pass
+
 
 class State6(State):
     """Closing"""
@@ -163,9 +262,21 @@ class State6(State):
 
     def inState(self):
         if self.strategy.all_traded == True:
-            # 6 ---> 1
+            # 6 ---> 7
+            self.reset_intra_trade_data()
+            self.new_state(State7)
+    
+
+class State7(State):
+    """Idle, wait for new day"""
+    def onEnterState(self):
+        print 'Enter S7'
+    def inState(self):
+        pass
+    def onEvent(self, event_type):
+        if event_type == 'NEW_DAY':
+            # 7 ---> 1
             self.new_state(State1)
-        
 
 ########################################################################
 class DThrustStrategy(CtaTemplate2):
@@ -175,30 +286,31 @@ class DThrustStrategy(CtaTemplate2):
 
     #------------------------------------------------------------------------
     # 策略参数
-    N = 5
+    N = 1
     k1 = 0.7
-    k2 = 0.7
+    k2 = 1.0
     # others
     volume = 1
     # stoploss
     stoploss_discount = .3
-    stoploss_value = 20
-    trailing_percentage = 2
+    stoploss_value = 10
+    trailing_percentage = 4
     #----------------------------------------------
 
     #------------------------------------------------------------------------
     # 策略变量
-    bufferSize = 100
+    bufferSize = N * 300 
     count = 0
     bar = None
     bar_5min = None
     barMinute = EMPTY_STRING
 
-    openArray = np.zeros(bufferSize)
-    highArray = np.zeros(bufferSize)
-    lowArray = np.zeros(bufferSize)
-    closeArray = np.zeros(bufferSize)
-
+    openArray = ring_buffer(bufferSize)
+    highArray = ring_buffer(bufferSize)
+    lowArray = ring_buffer(bufferSize)
+    closeArray = ring_buffer(bufferSize)
+    timeArray = ring_buffer(bufferSize)
+    last_day = None
     #----------------------------------------------------------------------
     def __init__(self, ctaEngine, setting):
         """Constructor"""
@@ -215,11 +327,13 @@ class DThrustStrategy(CtaTemplate2):
     def onInit(self):
         """初始化策略（必须由用户继承实现）"""
         self.writeCtaLog(u'%s策略初始化' %self.name)
-        self.vtSymbol = self.vtSymbols[0]
+        try:
+            self.vtSymbol = self.vtSymbols[0]
+        except IndexError:
+            self.vtSymbol = 'rb1801'
         self.fsm = State(self)
+        self.fsm.new_state(State0)
 
-        
-        
     #----------------------------------------------------------------------
     def onStart(self):
         """启动策略（必须由用户继承实现）"""
@@ -229,6 +343,11 @@ class DThrustStrategy(CtaTemplate2):
     def onStop(self):
         """停止策略（必须由用户继承实现）"""
         self.writeCtaLog(u'%s策略停止' %self.name)
+        position = self.pos.get(self.vtSymbol, 0)
+        if position > 0:
+            self.sendOrder(self.vtSymbol, CTAORDER_SELL, self.lastPrice - 10, position, self)
+        elif position < 0:
+            self.sendOrder(self.vtSymbol, CTAORDER_COVER, self.lastPrice + 10, -position, self)
 
     #-----------------------------------------------------------------------
     def onTick(self, tick):
@@ -311,37 +430,39 @@ class DThrustStrategy(CtaTemplate2):
                     bar_aggr.low = min(bar_aggr.low, bar.low)
                     bar_aggr.close = bar.close
         return aggregator
-    #----------------------------------------------------------------------
-    def updateArrays(self, bar):
-        # 保存K线数据
-        self.closeArray[0:self.bufferSize-1] = self.closeArray[1:self.bufferSize]
-        self.highArray[0:self.bufferSize-1] = self.highArray[1:self.bufferSize]
-        self.lowArray[0:self.bufferSize-1] = self.lowArray[1:self.bufferSize]
-        
-        self.closeArray[-1] = bar.close
-        self.highArray[-1] = bar.high
-        self.lowArray[-1] = bar.low
+    
 
+
+    #----------------------------------------------------------------------
+    def updateRingBuffers(self, bar):
+        self.openArray.push_back(bar.open)
+        self.closeArray.push_back(bar.close)
+        self.highArray.push_back(bar.high)
+        self.lowArray.push_back(bar.low)
+        self.timeArray.push_back(bar.datetime)
+
+    def calc_hlc_from_ring_buffer(self):
+        HH = max(self.highArray._array)
+        LC = min(self.closeArray._array, key=lambda x : x if x else MAX_NUMBER)
+        HC = max(self.closeArray._array)
+        LL = min(self.lowArray._array, key=lambda x:x if x else MAX_NUMBER)
+        return {'HH':HH, 'LC':LC, 'HC':HC, 'LL':LL}
     #----------------------------------------------------------------------
     def onBar(self, bar):
         """收到Bar推送（必须由用户继承实现）"""
+        self.updateRingBuffers(bar)
+        if bar.datetime.day != self.last_day:
+            self.last_day = bar.datetime.day
+            self.today_open = bar.open
+            self.fsm.onEvent("NEW_DAY")
         self.lastPrice = bar.close
         self.lastBar = bar
-        bar.close_ = (bar.high + bar.low)/2
         if __BACKTESTING__:
             self.lastTick = CtaTickData()
             self.lastTick.lastPrice = bar.close
             self.lastTick.datetime = bar.datetime
-        for i in range(3):
-            bar.close_ = self.pfs[i].Calculate(bar.close_)[0]
         
         self.barSeries_1min.append(bar)
-        self.updateArrays(bar)
-
-        self.pos_1min.append({'datetime':bar.datetime, 'pos':self.pos.get(bar.vtSymbol, 0)})
-        self.aggregate_5min(bar, self.onBar_5min)
-        self.aggregate_60min(bar, self.onBar_60min)
-
         self.fsm.inState()
 
     #----------------------------------------------------------------------
@@ -357,7 +478,6 @@ class DThrustStrategy(CtaTemplate2):
         print "onOrder(): orderTime = %r ; vtOrderID = %r; status = %s" % (order.orderTime, order.vtOrderID, order.status)
         if order.status == STATUS_ALLTRADED:
             self.all_traded = True
-            #self.last_traded_order = order
             if  __BACKTESTING__:
                 self.last_traded_time = datetime.strptime(order.orderTime, '%Y-%m-%d %H:%M:%S')
             else:
@@ -367,11 +487,7 @@ class DThrustStrategy(CtaTemplate2):
 
     #----------------------------------------------------------------------
     def onTrade(self, trade):
-        # print '-'*50
-        # print 'onTrade'
         self.last_traded_order = trade
-        pass
-
 
 
 def backtesting():
@@ -389,7 +505,6 @@ def backtesting():
 
     # 设置回测用的数据起始日期
     engine.setStartDate('20160622')
-    engine.setEndDate('20160705')
     
     # 载入历史数据到引擎中
     engine.setDatabase(MINUTE_DB_NAME, 'rb1705')
@@ -400,7 +515,7 @@ def backtesting():
     engine.setSize(1)         # 股指合约大小    
     
     # 在引擎中创建策略对象
-    engine.initStrategy(WFStrategy, {})
+    engine.initStrategy(DThrustStrategy, {})
     
     # 开始跑回测
     engine.runBacktesting()

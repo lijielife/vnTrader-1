@@ -1,7 +1,7 @@
 [
     {
-        "name": "WF",
-        "className": "WFStrategy",
+        "name": "DThrust",
+        "className": "DThrustStrategy",
         "vtSymbols": ["hc1801"]
     }
 ]

@@ -189,6 +189,8 @@ class BacktestingEngine(object):
             
         self.output(u'数据回放结束')
         self.strategy.onStop()
+        self.crossLimitOrder()
+        self.crossStopOrder()
         
     #----------------------------------------------------------------------
     def newBar(self, bar):
@@ -605,8 +607,12 @@ class BacktestingEngine(object):
         winningResult = 0       # 盈利次数
         losingResult = 0        # 亏损次数		
         totalWinning = 0        # 总盈利金额		
-        totalLosing = 0         # 总亏损金额        
-        
+        totalLosing = 0         # 总亏损金额     
+
+        import pprint
+        prettyResultList = [x.__dict__ for x in resultList]
+        pprint.pprint(prettyResultList)
+
         for result in resultList:
             capital += result.pnl
             maxCapital = max(capital, maxCapital)

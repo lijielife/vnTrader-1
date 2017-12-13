@@ -1,3 +1,3 @@
 import vtPath
-from ctaStrategy.strategy.strategyWF import *
+from ctaStrategy.strategy.strategyDThrust import *
 backtesting()

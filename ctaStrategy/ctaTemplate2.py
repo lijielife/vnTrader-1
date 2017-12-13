@@ -62,10 +62,10 @@ class CtaTemplate2(object):
     def __init__(self, ctaEngine, setting):
         """Constructor"""
         self.ctaEngine = ctaEngine
-
         # 设置策略的参数
         if setting:
             d = self.__dict__
+            print d
 
             for key in self.paramList:
                 if key in setting:

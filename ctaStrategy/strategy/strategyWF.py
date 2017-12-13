@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 
 import vtPath
 from ctaBase import *
-from ctaTemplate2 import CtaTemplate3
+from ctaTemplate2 import CtaTemplate2
 from my_module.particle_filter import ParticleFilter
 from my_module.wonham_filter import WonhamFilter
 from vtConstant import *
