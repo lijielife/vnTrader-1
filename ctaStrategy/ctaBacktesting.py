@@ -609,9 +609,12 @@ class BacktestingEngine(object):
         totalWinning = 0        # 总盈利金额		
         totalLosing = 0         # 总亏损金额     
 
-        import pprint
+        import json
         prettyResultList = [x.__dict__ for x in resultList]
-        pprint.pprint(prettyResultList)
+        json_str = json.dumps(prettyResultList, indent=4, sort_keys=True, default=str)
+        print json_str
+        with open('results/trades.log', 'w') as f:
+            f.write(json_str)
 
         for result in resultList:
             capital += result.pnl
@@ -985,7 +988,7 @@ if __name__ == '__main__':
     
     # 设置产品相关参数
     engine.setSlippage(0.2)     # 股指1跳
-    engine.setRate(0.3/10000)   # 万0.3
+    engine.setRate(1/10000)   # 万0.3
     engine.setSize(300)         # 股指合约大小    
     
     # 在引擎中创建策略对象

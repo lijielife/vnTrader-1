@@ -544,11 +544,11 @@ def backtesting():
     engine.setBacktestingMode(engine.BAR_MODE)
 
     # 设置回测用的数据起始日期
-    engine.setStartDate('20160622')
-    engine.setEndDate('20160705')
+    engine.setStartDate('20130101')
+    
     
     # 载入历史数据到引擎中
-    engine.setDatabase(MINUTE_DB_NAME, 'rb1705')
+    engine.setDatabase(MINUTE_DB_NAME, 'rb9999')
     
     # 设置产品相关参数
     engine.setSlippage(1)     # 股指1跳
