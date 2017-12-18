@@ -14,14 +14,14 @@ import vtPath
 from ctaBase import *
 from ctaTemplate2 import CtaTemplate2
 from vtConstant import *
-from my_module.ring_buffer import ring_buffer
+from my_module.my_buffer import ring_buffer, queue_buffer
 
 MAX_NUMBER = 10000000
 MIN_NUMBER = 0
 
 __BACKTESTING__ = True
-BACKTESTING_SYMBOL = 'rb9999'
-TICK_SIZE = 1
+BACKTESTING_SYMBOL = 'ru9999'
+TICK_SIZE = 5
 
 log_str = ''
 def print_log(str):
@@ -79,8 +79,8 @@ class State:
         #1
         need_sl = False
         #2
-        pnl = self.calc_pnl(self.strategy.lastPrice)
-        need_sl =  pnl < -self.strategy.stoploss_value
+        # pnl = self.calc_pnl(self.strategy.lastPrice)
+        # need_sl =  pnl < -self.strategy.stoploss_value
         #3
         # if self.direction==DIRECTION_LONG:
         #     need_sl = need_sl or self.strategy.lastPrice < self.strategy.today_open
@@ -147,7 +147,7 @@ class State1(State):
         #print 'Enter S1'
         #self.direction = DIRECTION_UNKNOWN
         # recalculate HH, HC, LC, L
-        self.hist_hlc_dict = self.strategy.calc_hlc_from_ring_buffer()
+        self.hist_hlc_dict = self.strategy.calc_hlc_from_buffer()
         today_open = self.strategy.today_open
         m = max(self.hist_hlc_dict['HH']-self.hist_hlc_dict['LC'], self.hist_hlc_dict['HC']-self.hist_hlc_dict['LL'])
         self.long_trigger = today_open + m * self.strategy.k1
@@ -277,7 +277,7 @@ class State4(State):
         if event_type == "NEW_DAY":
             self.new_state(State1)
         elif event_type == "DAY_CLOSE":
-            #self.new_state(State5)
+            self.new_state(State5)
             pass
 
 
@@ -342,7 +342,7 @@ class DThrustStrategy(CtaTemplate2):
     max_volume = 4
     # stoploss
     stoploss_discount = .3
-    stoploss_value = 20 * TICK_SIZE
+    #stoploss_value = 20 * TICK_SIZE
     trailing_percentage = 2
     #----------------------------------------------
 
@@ -354,11 +354,22 @@ class DThrustStrategy(CtaTemplate2):
     bar_5min = None
     barMinute = EMPTY_STRING
 
+    # openArray = queue_buffer(bufferSize)
+    # highArray = queue_buffer(bufferSize)
+    # lowArray = queue_buffer(bufferSize)
+    # closeArray = queue_buffer(bufferSize)
+    # timeArray = queue_buffer(bufferSize)
+    # ddArray = queue_buffer(bufferSize)
+    # rddArray = queue_buffer(bufferSize)
+
     openArray = ring_buffer(bufferSize)
     highArray = ring_buffer(bufferSize)
     lowArray = ring_buffer(bufferSize)
     closeArray = ring_buffer(bufferSize)
     timeArray = ring_buffer(bufferSize)
+    ddArray = ring_buffer(bufferSize)
+    rddArray = ring_buffer(bufferSize)
+    
     last_day = None
 
     pos_cost_dict = {}
@@ -491,14 +502,15 @@ class DThrustStrategy(CtaTemplate2):
 
 
     #----------------------------------------------------------------------
-    def updateRingBuffers(self, bar):
+    def updateBuffers(self, bar):
         self.openArray.push_back(bar.open)
         self.closeArray.push_back(bar.close)
         self.highArray.push_back(bar.high)
         self.lowArray.push_back(bar.low)
         self.timeArray.push_back(bar.datetime)
 
-    def calc_hlc_from_ring_buffer(self):
+
+    def calc_hlc_from_buffer(self):
         HH = max(self.highArray._array)
         LC = min(self.closeArray._array, key=lambda x : x if x else MAX_NUMBER)
         HC = max(self.closeArray._array)
@@ -509,7 +521,7 @@ class DThrustStrategy(CtaTemplate2):
         """收到Bar推送（必须由用户继承实现）"""
         self.lastPrice = bar.close
         self.lastBar = bar
-        self.updateRingBuffers(bar)
+        self.updateBuffers(bar)
         if bar.datetime.day != self.last_day:
             self.last_day = bar.datetime.day
             self.today_open = bar.open
