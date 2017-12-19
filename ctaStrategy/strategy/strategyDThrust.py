@@ -5,6 +5,7 @@ dual thrust
 from __future__ import division
 
 import numpy as np
+import pandas as pd
 
 import talib
 from copy import copy
@@ -14,14 +15,14 @@ import vtPath
 from ctaBase import *
 from ctaTemplate2 import CtaTemplate2
 from vtConstant import *
-from my_module.my_buffer import ring_buffer, queue_buffer
+from my_module.my_buffer import deque_buffer
 
 MAX_NUMBER = 10000000
 MIN_NUMBER = 0
 
 __BACKTESTING__ = True
-BACKTESTING_SYMBOL = 'ru9999'
-TICK_SIZE = 5
+BACKTESTING_SYMBOL = 'rb9999'
+TICK_SIZE = 1
 
 log_str = ''
 def print_log(str):
@@ -36,6 +37,7 @@ def write_log():
     with open('results/log.txt','w') as f:
         print log_str
         f.write(log_str.encode('utf-8'))
+
 
 # 主状态基类
 class State:
@@ -139,7 +141,6 @@ class State0(State):
 
     def inState(self):
         pass
-    
 
 class State1(State):
     """Waiting for trading signal"""
@@ -153,8 +154,11 @@ class State1(State):
         self.long_trigger = today_open + m * self.strategy.k1
         self.short_trigger = today_open - m * self.strategy.k2
         print_log('[%s] S1: open = %.1f, long_trigger = %.1f, short_trigger = %.1f' %(self.strategy.lastBar.datetime, today_open, self.long_trigger, self.short_trigger))
+        print_log('trend_index = %f' %self.strategy.get_trend_index())
 
     def inState(self):
+        # if self.strategy.get_trend_index() > 0.02:
+        #     return
         #if new trading day and breakthough
         # check up_break or down_break
         self.update_intra_trade_data()
@@ -183,7 +187,6 @@ class State1(State):
     def onEvent(self, event_type):
         if event_type == "NEW_DAY":
             self.new_state(State1)
-
 
 class State2(State):
     """Open"""
@@ -277,9 +280,8 @@ class State4(State):
         if event_type == "NEW_DAY":
             self.new_state(State1)
         elif event_type == "DAY_CLOSE":
-            self.new_state(State5)
+            #self.new_state(State5)
             pass
-
 
 class State5(State):
     """Close"""
@@ -300,7 +302,6 @@ class State5(State):
     def inState(self):
         print_log('S5')
 
-
 class State6(State):
     """Closing"""
     def onEnterState(self):
@@ -313,7 +314,6 @@ class State6(State):
             print_log('-'*100)
             self.new_state(State7)
     
-
 class State7(State):
     """Idle, wait for new day"""
     def onEnterState(self):
@@ -354,21 +354,10 @@ class DThrustStrategy(CtaTemplate2):
     bar_5min = None
     barMinute = EMPTY_STRING
 
-    # openArray = queue_buffer(bufferSize)
-    # highArray = queue_buffer(bufferSize)
-    # lowArray = queue_buffer(bufferSize)
-    # closeArray = queue_buffer(bufferSize)
-    # timeArray = queue_buffer(bufferSize)
-    # ddArray = queue_buffer(bufferSize)
-    # rddArray = queue_buffer(bufferSize)
-
-    openArray = ring_buffer(bufferSize)
-    highArray = ring_buffer(bufferSize)
-    lowArray = ring_buffer(bufferSize)
-    closeArray = ring_buffer(bufferSize)
-    timeArray = ring_buffer(bufferSize)
-    ddArray = ring_buffer(bufferSize)
-    rddArray = ring_buffer(bufferSize)
+    barArray = deque_buffer(bufferSize)
+    closeArray = deque_buffer(bufferSize)
+    ddArray = deque_buffer(bufferSize)
+    rddArray = deque_buffer(bufferSize)
     
     last_day = None
 
@@ -387,6 +376,8 @@ class DThrustStrategy(CtaTemplate2):
         self.all_traded = False
         if __BACKTESTING__:
             self.log_str = ''
+            self.data = {'close':[], 'trend_index':[]}
+
 
 
     #----------------------------------------------------------------------
@@ -416,6 +407,8 @@ class DThrustStrategy(CtaTemplate2):
             self.sendOrder(self.vtSymbol, CTAORDER_COVER, self.lastPrice + 10, -position, self)
         
         write_log()
+        df = pd.DataFrame(self.data)
+        df.to_csv('results/data.csv')
 
     #-----------------------------------------------------------------------
     def onTick(self, tick):
@@ -499,29 +492,58 @@ class DThrustStrategy(CtaTemplate2):
                     bar_aggr.close = bar.close
         return aggregator
     
-
+    #----------------------------------------------------------------------
+    def calc_hlc_from_buffer(self):
+        HH = max(self.barArray._array, key=lambda x:x.high)
+        LC = min(self.barArray._array, key=lambda x:x.close if x.close else MAX_NUMBER)
+        HC = max(self.barArray._array, key=lambda x:x.close)
+        LL = min(self.barArray._array, key=lambda x:x.low if x.low else MAX_NUMBER)
+        return {'HH':HH.high, 'LC':LC.close, 'HC':HC.close, 'LL':LL.low}
 
     #----------------------------------------------------------------------
-    def updateBuffers(self, bar):
-        self.openArray.push_back(bar.open)
-        self.closeArray.push_back(bar.close)
-        self.highArray.push_back(bar.high)
-        self.lowArray.push_back(bar.low)
-        self.timeArray.push_back(bar.datetime)
+    @staticmethod
+    def maxdrawdown(arr):
+        arr = np.array(arr)
+        tmp = (np.maximum.accumulate(arr) - arr)/np.maximum.accumulate(arr)
+        i = np.argmax(tmp)
+        if i==0:
+            return 0.0
+        return tmp[i]
+    
+    @staticmethod
+    def maxdrawdown_r(arr):
+        arr = np.array(arr)
+        tmp = (arr - np.minimum.accumulate(arr))/np.minimum.accumulate(arr)
+        i = np.argmax(tmp)
+        if i==0:
+            return 0.0
+        return tmp[i]
 
+    #----------------------------------------------------------------------
+    def update_dd_rdd_buffer(self):
+        new_dd = self.maxdrawdown(self.closeArray._array)
+        new_rdd = self.maxdrawdown_r(self.closeArray._array)
+        self.ddArray.push_back(new_dd)
+        self.rddArray.push_back(new_rdd)
 
-    def calc_hlc_from_buffer(self):
-        HH = max(self.highArray._array)
-        LC = min(self.closeArray._array, key=lambda x : x if x else MAX_NUMBER)
-        HC = max(self.closeArray._array)
-        LL = min(self.lowArray._array, key=lambda x:x if x else MAX_NUMBER)
-        return {'HH':HH, 'LC':LC, 'HC':HC, 'LL':LL}
+    #----------------------------------------------------------------------
+    def get_trend_index(self):
+        a = sum(self.ddArray._array)/self.ddArray.length()
+        b = sum(self.rddArray._array)/self.rddArray.length()
+        #print a, b
+        return min(a, b)
     #----------------------------------------------------------------------
     def onBar(self, bar):
         """收到Bar推送（必须由用户继承实现）"""
         self.lastPrice = bar.close
         self.lastBar = bar
-        self.updateBuffers(bar)
+        self.barArray.push_back(bar)
+        self.closeArray.push_back(bar.close)
+        self.update_dd_rdd_buffer()
+        if __BACKTESTING__:
+            self.data['close'].append(bar.close)
+            self.data['trend_index'].append(self.get_trend_index())
+
         if bar.datetime.day != self.last_day:
             self.last_day = bar.datetime.day
             self.today_open = bar.open
@@ -534,6 +556,7 @@ class DThrustStrategy(CtaTemplate2):
             self.lastTick = CtaTickData()
             self.lastTick.lastPrice = bar.close
             self.lastTick.datetime = bar.datetime
+
         
         self.barSeries_1min.append(bar)
         self.fsm.inState()
