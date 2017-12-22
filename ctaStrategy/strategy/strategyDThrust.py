@@ -6,6 +6,7 @@ from __future__ import division
 
 import numpy as np
 import pandas as pd
+import math
 
 import talib
 from copy import copy
@@ -29,13 +30,13 @@ def print_log(str):
     global log_str
     if __BACKTESTING__:
         log_str = log_str + str + '\n'
-    print str
+    #print str
 
 def write_log():
     if not __BACKTESTING__:
         return
     with open('results/log.txt','w') as f:
-        print log_str
+        #print log_str
         f.write(log_str.encode('utf-8'))
 
 
@@ -98,8 +99,10 @@ class State:
         need_sl = False
         if self.direction == DIRECTION_LONG:
             need_sl = self.strategy.lastPrice < self.intra_trade_high *(1 - self.strategy.trailing_percentage/100.0)
+            #need_sl = self.strategy.lastPrice < self.intra_trade_high - self.strategy.stoploss_value
         elif self.direction == DIRECTION_SHORT:
             need_sl = self.strategy.lastPrice > self.intra_trade_low * (1 + self.strategy.trailing_percentage/100.0)
+            #need_sl = self.strategy.lastPrice > self.intra_trade_low + self.strategy.stoploss_value
         if need_sl:
             print_log('[trailing]')
         return need_sl
@@ -151,8 +154,8 @@ class State1(State):
         self.hist_hlc_dict = self.strategy.calc_hlc_from_buffer()
         today_open = self.strategy.today_open
         m = max(self.hist_hlc_dict['HH']-self.hist_hlc_dict['LC'], self.hist_hlc_dict['HC']-self.hist_hlc_dict['LL'])
-        self.long_trigger = today_open + m * self.strategy.k1
-        self.short_trigger = today_open - m * self.strategy.k2
+        self.long_trigger = today_open + m * self.strategy.k1 / math.sqrt(self.strategy.N)
+        self.short_trigger = today_open - m * self.strategy.k2 / math.sqrt(self.strategy.N)
         print_log('[%s] S1: open = %.1f, long_trigger = %.1f, short_trigger = %.1f' %(self.strategy.lastBar.datetime, today_open, self.long_trigger, self.short_trigger))
         print_log('trend_index = %f' %self.strategy.get_trend_index())
 
@@ -342,7 +345,7 @@ class DThrustStrategy(CtaTemplate2):
     max_volume = 4
     # stoploss
     stoploss_discount = .3
-    #stoploss_value = 20 * TICK_SIZE
+    stoploss_value = 80 * TICK_SIZE
     trailing_percentage = 2
     #----------------------------------------------
 
