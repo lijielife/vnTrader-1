@@ -90,7 +90,12 @@ class CtaEngine2(object):
         self.engineType = ENGINETYPE_TRADING
         
         # 注册事件监听
-        self.registerEvent()
+        self.eventEngine.register(EVENT_TICK, self.processTickEvent)
+        self.eventEngine.register(EVENT_ORDER, self.processOrderEvent)
+        self.eventEngine.register(EVENT_TRADE, self.processTradeEvent)
+        self.eventEngine.register(EVENT_BALANCE, self.processBalanceEvent)
+        self.eventEngine.register(EVENT_POSITION, self.processPositionEvent)
+        self.eventEngine.register(EVENT_CTA_TASK, self.processTaskEvent)
 
     #-------------------------------------------------------------
     def getPosition(self, vtSymbol):
@@ -170,11 +175,11 @@ class CtaEngine2(object):
         self.writeCtaLog(u'策略%s发送委托, %s, %s, %s@%s' %(strategy.name, vtSymbol, req.direction, volume, price))
         return vtOrderID
 
-    #-------------------------------------------------------------
+    #------------------------------------------------------------- if sendorder alt=falsee elseif sendorder2 alt=true
     def sendOrder(self, vtSymbol, orderType, price, volume, strategy, priceType, parked, alt, kwargs):
         """send order"""
-        if alt:
-            return self.sendOrder2(vtSymbol, orderType, price, volume, strategy, priceType, kwargs)
+        #if alt:
+        #    return self.sendOrder2(vtSymbol, orderType, price, volume, strategy, priceType, kwargs)
         contract = self.mainEngine.getContract(vtSymbol)
         
         req = VtOrderReq()
@@ -187,7 +192,7 @@ class CtaEngine2(object):
         req.currency = strategy.currency        
         
         
-        req.priceType = priceType
+        req.priceType = priceType # market or limit order
         
         # CTA委托类型映射
         if orderType == CTAORDER_BUY:
@@ -489,16 +494,6 @@ class CtaEngine2(object):
         task_result = task_ret['result']
         self.callStrategyFunc(strategy, strategy.onTask, task_result)
 
-
-    #------------------------------------------------------------------
-    def registerEvent(self):
-        self.eventEngine.register(EVENT_TICK, self.processTickEvent)
-        self.eventEngine.register(EVENT_ORDER, self.processOrderEvent)
-        self.eventEngine.register(EVENT_TRADE, self.processTradeEvent)  
-        self.eventEngine.register(EVENT_BALANCE, self.processBalanceEvent)
-        self.eventEngine.register(EVENT_POSITION, self.processPositionEvent)
-        self.eventEngine.register(EVENT_CTA_TASK, self.processTaskEvent)
-
     #----------------------------------------------------------------------
     def insertData(self, dbName, collectionName, data):
         """插入数据到数据库（这里的data可以是CtaTickData或者CtaBarData）"""
@@ -599,19 +594,22 @@ class CtaEngine2(object):
         
         # 获取策略类
         strategyClass2 = STRATEGY_CLASS.get(className, None)
+
         if not strategyClass2:
             self.writeCtaLog(u'找不到策略类：%s' %className)
             return
-        
+
         # 防止策略重名
         if name in self.strategyDict:
             self.writeCtaLog(u'策略实例重名：%s' %name)
         else:
             # 创建策略实例
-            strategy = strategyClass2(self, setting)  
-            self.strategyDict[name] = strategy
 
+            strategy = strategyClass2(self, setting)
+
+            self.strategyDict[name] = strategy
             # Tick map
+
             for vtSymbol in strategy.vtSymbols:
                 if vtSymbol in self.tickStrategyDict:
                     l = self.tickStrategyDict[vtSymbol]
@@ -627,6 +625,7 @@ class CtaEngine2(object):
                     req.exchange = contract.exchange
                     req.currency = strategy.currency
                     req.productClass = strategy.productClass
+
                     self.mainEngine.subscribe(req, contract.gatewayName)
                 else:
                     self.writeCtaLog(u'%s的交易合约%s无法找到' %(name, vtSymbol))
@@ -642,7 +641,7 @@ class CtaEngine2(object):
                         l = []
                         self.gatewayNameStrategyDict[gatewayName] = l
                     l.append(strategy)
-            
+
     #----------------------------------------------------------
     def getExchange(self, vtSymbol):
         """从vtSymbol分解获得交易所信息"""
@@ -731,7 +730,6 @@ class CtaEngine2(object):
         """读取策略配置"""
         with open(self.settingFileName) as f:
             l = json.load(f)
-            
             for setting in l:
                 self.loadStrategy(setting)
 

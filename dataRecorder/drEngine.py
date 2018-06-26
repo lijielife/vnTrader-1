@@ -20,8 +20,6 @@ from drBase import *
 from vtFunction import todayDate
 from language import text
 
-
-
 ########################################################################
 class DrEngine(object):
     """数据记录引擎"""
@@ -67,6 +65,7 @@ class DrEngine(object):
             if not working:
                 return
             if 'tick' in drSetting:
+                # 多维列表,每行数据如["rb1810","CTP"]
                 l = drSetting['tick']
                 
                 for setting in l:
@@ -87,7 +86,7 @@ class DrEngine(object):
                         req.currency = setting[3]
                         req.productClass = setting[4]
                     
-                    self.mainEngine.subscribe(req, setting[1])
+                    self.mainEngine.subscribe(req, setting[1])  # setting[1]为交易所代号如'CTP'
                     
                     drTick = DrTickData()           # 该tick实例可以用于缓存部分数据（目前未使用）
                     self.tickDict[vtSymbol] = drTick
@@ -126,8 +125,7 @@ class DrEngine(object):
             self.start()
             
             # 注册事件监听
-            self.registerEvent()    
-
+            self.eventEngine.register(EVENT_TICK, self.procecssTickEvent)
     #----------------------------------------------------------------------
     def procecssTickEvent(self, event):
         """处理行情推送"""
@@ -212,11 +210,6 @@ class DrEngine(object):
                 bar.low = min(bar.low, drTick.lastPrice)
                 bar.close = drTick.lastPrice            
 
-    #----------------------------------------------------------------------
-    def registerEvent(self):
-        """注册事件监听"""
-        self.eventEngine.register(EVENT_TICK, self.procecssTickEvent)
- 
     #----------------------------------------------------------------------
     def insertData(self, dbName, collectionName, data):
         """插入数据到数据库（这里的data可以是CtaTickData或者CtaBarData）"""

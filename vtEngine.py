@@ -20,11 +20,12 @@ from dataRecorder.drEngine import DrEngine
 from riskManager.rmEngine import RmEngine
 from posManager.pmEngine import PmEngine
 from webMonitor.wmEngine import WmEngine
-from chartServer.chartEngine import ChartEngine
+
 
 ########################################################################
 class MainEngine(object):
     """主引擎"""
+# del chart data
 
     #----------------------------------------------------------------------
     def __init__(self):
@@ -35,7 +36,7 @@ class MainEngine(object):
         # 创建事件引擎
         self.eventEngine = EventEngine2()
         self.eventEngine.start()
-        
+
         # 创建数据引擎
         self.dataEngine = DataEngine(self.eventEngine)
         
@@ -48,11 +49,10 @@ class MainEngine(object):
         # 扩展模块
         self.ctaEngine = CtaEngine2(self, self.eventEngine)
         self.drEngine = DrEngine(self, self.eventEngine)
-        self.rmEngine = RmEngine(self, self.eventEngine)
-        self.pmEngine = PmEngine(self, self.eventEngine)
-        self.wmEngine = WmEngine(self, self.eventEngine)
-        self.chartEngine = ChartEngine(self, self.eventEngine)
-
+        # self.rmEngine = RmEngine(self, self.eventEngine)
+        # self.pmEngine = PmEngine(self, self.eventEngine)
+        # self.wmEngine = WmEngine(self, self.eventEngine)
+ 
         self.eventEngine.register(EVENT_LOG, self.printLog)
         self.eventEngine.register(EVENT_CTA_LOG, self.printLog)
         self.eventEngine.register(EVENT_ERROR, self.printErrorLog)
@@ -64,7 +64,9 @@ class MainEngine(object):
         self.gatewayDict = OrderedDict()
         
         # 遍历接口字典并自动创建所有的接口对象
+        value = GATEWAY_DICT
         for gatewayModule in GATEWAY_DICT.values():
+
             try:
                 self.addGateway(gatewayModule.gateway, gatewayModule.gatewayName)
                 if gatewayModule.gatewayQryEnabled:
@@ -159,8 +161,7 @@ class MainEngine(object):
             gateway.cancelOrder(cancelOrderReq)
         else:
             self.writeLog(text.GATEWAY_NOT_EXIST.format(gateway=gatewayName))
-            
-        
+
     #----------------------------------------------------------------------
     def qryAccount(self, gatewayName):
         """查询特定接口的账户"""
@@ -370,9 +371,10 @@ class DataEngine(object):
         
         # 读取保存在硬盘的合约数据
         self.loadContracts()
-        
+
         # 注册事件监听
-        self.registerEvent()
+        self.eventEngine.register(EVENT_CONTRACT, self.updateContract)
+        self.eventEngine.register(EVENT_ORDER, self.updateOrder)
         
     #----------------------------------------------------------------------
     def updateContract(self, event):
@@ -407,9 +409,7 @@ class DataEngine(object):
     #----------------------------------------------------------------------
     def loadContracts(self):
         """从硬盘读取合约对象"""
-
         f = shelve.open(self.contractFileName)
-        
         if 'data' in f:
             d = f['data']
             for key, value in d.items():
@@ -443,11 +443,17 @@ class DataEngine(object):
         """查询所有活动委托（返回列表）"""
         return self.workingOrderDict.values()
     
-    #----------------------------------------------------------------------
-    def registerEvent(self):
-        """注册事件监听"""
-        self.eventEngine.register(EVENT_CONTRACT, self.updateContract)
-        self.eventEngine.register(EVENT_ORDER, self.updateOrder)
-        
-    
-    
+
+
+
+if __name__ == '__main__':
+    mainEngine = MainEngine()
+    mainEngine.ctaEngine.loadSetting()
+    gateway = GATEWAY_DICT['CTP']
+
+
+    for name in mainEngine.ctaEngine.strategyDict.keys():
+        # name=107AA
+        mainEngine.ctaEngine.initStrategy(name)
+
+    mainEngine.connect(gateway.gatewayName)

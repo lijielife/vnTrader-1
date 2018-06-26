@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import math
 
-import talib
+#import talib
 from copy import copy
 from datetime import datetime, timedelta
 
@@ -416,6 +416,7 @@ class DThrustStrategy(CtaTemplate2):
     #-----------------------------------------------------------------------
     def onTick(self, tick):
         """收到行情TICK推送（必须由用户继承实现）"""
+        print 'tick', tick.vtSymbol, tick.lastPrice
         self.lastPrice = tick.lastPrice
         self.lastTick = tick
         # 聚合为1分钟K线

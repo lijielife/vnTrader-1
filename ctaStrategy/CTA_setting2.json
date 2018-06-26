@@ -1,7 +1,7 @@
 [
     {
-        "name": "DThrust",
+        "name": "107AA",
         "className": "DThrustStrategy",
-        "vtSymbols": ["hc1801"]
+        "vtSymbols": [ "rb1810"]
     }
 ]

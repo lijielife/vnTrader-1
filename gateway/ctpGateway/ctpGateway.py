@@ -13,11 +13,14 @@ import json
 from copy import copy
 from datetime import datetime
 
+
 from vnctpmd import MdApi
 from vnctptd import TdApi
 from ctpDataType import *
 from vtGateway import *
 from language import text
+
+
 
 
 # 以下为一些VT类型和CTP类型的映射字典
@@ -100,6 +103,7 @@ class CtpGateway(VtGateway):
     def connect(self):
         """连接"""
         # 载入json文件
+
         fileName = self.gatewayName + '_connect.json'
         path = os.path.abspath(os.path.dirname(__file__))
         fileName = os.path.join(path, fileName)
@@ -112,9 +116,10 @@ class CtpGateway(VtGateway):
             log.logContent = text.LOADING_ERROR
             self.onLog(log)
             return
-        
+        print 1111111
         # 解析json文件
         setting = json.load(f)
+
         try:
             userID = str(setting['userID'])
             password = str(setting['password'])
@@ -161,9 +166,11 @@ class CtpGateway(VtGateway):
     def sendOrder(self, orderReq):
         """发单"""
         return self.tdApi.sendOrder(orderReq)
+
     #----------------------------------------------------------------------
     def sendParkedOrder(self, orderReq):
         return self.tdApi.sendOrder(orderReq, parked=True)
+
     #----------------------------------------------------------------------
     def cancelOrder(self, cancelOrderReq):
         """撤单"""
@@ -224,7 +231,7 @@ class CtpGateway(VtGateway):
     def startQuery(self):
         """启动连续查询"""
         self.eventEngine.register(EVENT_TIMER, self.query)
-    
+
     #----------------------------------------------------------------------
     def setQryEnabled(self, qryEnabled):
         """设置是否要启动循环查询"""
@@ -358,6 +365,7 @@ class CtpMdApi(MdApi):
         
         tick.lastPrice = data['LastPrice']
         tick.volume = data['Volume']
+        tick.amount = data['Turnover']
         tick.openInterest = data['OpenInterest']
         tick.time = '.'.join([data['UpdateTime'], str(data['UpdateMillisec']/100)])
         
@@ -1510,7 +1518,7 @@ def test():
     
     app = QtCore.QCoreApplication(sys.argv)    
 
-    eventEngine = EventEngine()
+    eventEngine = EventEngine2()
     eventEngine.register(EVENT_LOG, print_log)
     eventEngine.start()
     

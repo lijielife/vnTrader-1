@@ -1,1 +1,3 @@
 python vtConsoleServer.py
+
+pause

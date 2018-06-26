@@ -49,9 +49,9 @@ class App(object):
         self.strategyInited = False
         self.strategyStarted = False
         self.mainEngine.writeLog("MainEngine Started.") 
-        self.connectGateway('SHZD')
-        self.connectGateway('CTP')
-        self.connectGateway('OANDA')
+        #self.connectGateway('SHZD')
+        # self.connectGateway('CTP')
+        #self.connectGateway('OANDA')
 
 
     def quit(self):
@@ -118,14 +118,12 @@ class App(object):
                 print e
             else:
                 self.gatewayConnectedDict[gateway.gatewayName] = True
-                #printLog("Done!" ) 
-
-
+                #printLog("Done!" )
 #--------------------------------------------------------------
 
 #----------------------------------------------------------------------
 def runServer():
-    repAddress = 'tcp://*:2017'
+    repAddress = 'tcp://*:2017'   # port
     pubAddress = 'tcp://*:0616'
     
     # start server

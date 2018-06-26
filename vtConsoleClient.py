@@ -12,8 +12,8 @@ class AppClient(RpcClient):
 
 #----------------------------------------------------
 def main():
-    reqAddress = 'tcp://localhost:2017'
-    subAddress = 'tcp://localhost:0616'
+    reqAddress = 'tcp://localhost:2017' # port
+    subAddress = 'tcp://localhost:0616' # 4 or 5 digit
     client = AppClient(reqAddress, subAddress)
     client.start()
 

@@ -103,9 +103,12 @@ class CtaBarData(object):
         self.time = EMPTY_STRING            # 时间
         self.datetime = None                # python的datetime时间对象
         
+        self.amount = EMPTY_INT             # 成交额
         self.volume = EMPTY_INT             # 成交量
         self.openInterest = EMPTY_INT       # 持仓量
 
+    def __str__(self):
+        return self.vtSymbol
 
 ########################################################################
 class CtaTickData(object):
@@ -122,7 +125,8 @@ class CtaTickData(object):
         self.lastPrice = EMPTY_FLOAT            # 最新成交价
         self.volume = EMPTY_INT                 # 最新成交量
         self.openInterest = EMPTY_INT           # 持仓量
-        
+        self.amount = EMPTY_INT                 # 成交额
+
         self.upperLimit = EMPTY_FLOAT           # 涨停价
         self.lowerLimit = EMPTY_FLOAT           # 跌停价
         

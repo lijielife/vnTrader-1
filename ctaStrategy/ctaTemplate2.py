@@ -65,7 +65,6 @@ class CtaTemplate2(object):
         # 设置策略的参数
         if setting:
             d = self.__dict__
-            print d
 
             for key in self.paramList:
                 if key in setting:

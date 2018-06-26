@@ -1,0 +1,24 @@
+
+computer which executes algothrim changes port
+vtConsoleClient.py , look for pubAddress
+vtConsoleServer.py, look for pubAddress
+
+mongoDB address change
+VT_setting.json
+
+apply a strategy and related instrument
+CTA_setting2.json
+
+change internet connection setting
+CTP_connect.json
+
+Get instrument data
+DR_setting.json
+drengine.py
+
+update CTP API
+vnctptd.pyd
+
+plot chart for data
+chartEngine.py
+chartClient.py

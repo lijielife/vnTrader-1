@@ -3,10 +3,9 @@
 
     "tick":
     [
-        ["au1712","CTP"],
-        ["GC1708","SHZD","CME"],
-        ["USD_CNH","OANDA","OANDA"],
-        ["USD.CNH", "IB", "IDEALPRO", "CNH", "外汇"]
+        ["rb1810","CTP"],
+
+        ["AP810","CTP"]
     ]
     
 }

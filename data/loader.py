@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from scipy.ndimage.filters import gaussian_filter1d
 
-HDF_DIR = 'd:/vn.trader/data/h5'
+HDF_DIR = 'c:/projects/vn.trader/data/h5'
 
 class DataLoader(object):
     def __init__(self,hdf_dir=HDF_DIR, date_format='%Y%m%d'):
@@ -76,19 +76,19 @@ if __name__ == '__main__':
 
     df_rs = dl.LoadBar('rb1705', '20161230', '20161230', bin='1min')
     print df_rs
-    # plt.figure()
-    # fig1 = plt.subplot(211)
-    # fig1.plot(list(df_rs['close']))
-    # fig2 = plt.subplot(212)
-    # blurred = gaussian_filter1d(list(df_rs['dVol']), 3.0)
-    # fig2.plot(blurred)
+    plt.figure()
+    fig1 = plt.subplot(211)
+    fig1.plot(list(df_rs['close']))
+    fig2 = plt.subplot(212)
+    blurred = gaussian_filter1d(list(df_rs['dVol']), 3.0)
+    fig2.plot(blurred)
     # blurred_rt = []
     # for i in range(len(df_rs['dVol'])):
     #     b = gaussian_filter1d(list(df_rs['dVol'])[:i+1], 2.0)
     #     blurred_rt.append(b[-1])
     # fig2.plot(list(df_rs['dVol']))
     # fig2.plot(blurred_rt)
-    # plt.show()
+    plt.show()
     
 
 
